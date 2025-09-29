@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/script/insert_posts.sql" value="7432acba-48ca-4fa1-9bbb-fcd747b7b23f" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/sql/database_migration_wechat.sql" value="7432acba-48ca-4fa1-9bbb-fcd747b7b23f" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/sql/database_migration_wechat_optimized.sql" value="7432acba-48ca-4fa1-9bbb-fcd747b7b23f" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/sql/herizon.sql" value="7432acba-48ca-4fa1-9bbb-fcd747b7b23f" />
+  </component>
+</project>
