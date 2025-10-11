@@ -128,6 +128,14 @@ public class CommentService {
         }
 
         // 创建评论实体
+        // 安全检查：防止必填字段为null导致数据库错误
+        if (request.getContent() == null || request.getContent().trim().isEmpty()) {
+            throw new RuntimeException("评论内容不能为空");
+        }
+        if (request.getPostId() == null) {
+            throw new RuntimeException("帖子ID不能为空");
+        }
+
         Comment comment = new Comment();
         comment.setPostId(request.getPostId());
         comment.setUserId(userId);
@@ -265,10 +273,10 @@ public class CommentService {
             dto.setUsername(user.getUsername());
         }
 
-        // 获取所属帖子标题
+        // 获取所属帖子标题，安全处理可能为null的标题字段
         Post post = postMapper.selectOneById(comment.getPostId());
         if (post != null) {
-            dto.setPostTitle(post.getTitle());
+            dto.setPostTitle(post.getTitle() != null ? post.getTitle() : "");
         }
 
         // 如果是回复评论，获取父评论作者用户名

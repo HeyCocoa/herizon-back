@@ -56,11 +56,8 @@ public class AuthController{
             @Parameter (description = "微信登录请求") @RequestBody WechatLoginRequest request){
 
         try {
-            System.out.println("收到微信登录请求，code: " + request.getCode());
-
             // 步骤1: 调用微信API验证code
             Code2SessionResponse wxResponse = wechatService.code2Session(request.getCode());
-            System.out.println("微信API验证成功，openid: " + wxResponse.getOpenid());
 
             // 步骤2: 根据openid进行用户登录或注册
             WechatLoginResponse loginResponse = userService.wechatLogin(
@@ -70,7 +67,6 @@ public class AuthController{
                     request
             );
 
-            System.out.println("微信登录成功，用户ID: " + loginResponse.getUserInfo().getUserId());
             return Result.success(loginResponse);
 
         } catch( Exception e ) {
@@ -123,7 +119,6 @@ public class AuthController{
                 return Result.error(401, "Token无效或已过期，请重新登录");
             }
 
-            System.out.println("Token验证成功");
             return Result.success();
 
         } catch( Exception e ) {
@@ -159,7 +154,6 @@ public class AuthController{
                 return Result.error(401, "Token无效，无法刷新，请重新登录");
             }
 
-            System.out.println("Token刷新成功");
             return Result.success(newToken);
 
         } catch( Exception e ) {

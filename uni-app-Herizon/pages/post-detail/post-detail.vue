@@ -1,10 +1,10 @@
 <!-- 帖子详情页 - 展示完整帖子内容和评论系统 -->
 <template>
-	<!-- 主容器：帖子详情和评论 -->
+	<!-- 主容器:帖子详情和评论 -->
 	<view class="post-detail-container">
-		<!-- 加载状态 -->
-		<view v-if="loading" class="loading-container">
-			<text class="loading-text">加载中...</text>
+		<!-- 骨架屏 - 加载中显示 -->
+		<view v-if="loading && !postDetail" class="skeleton-container">
+			<post-skeleton :show-image="true"></post-skeleton>
 		</view>
 
 		<!-- 帖子内容 -->
@@ -13,11 +13,17 @@
 			<view class="user-info" @click="goToUserProfile(postDetail.userId)">
 				<image class="avatar" :src="postDetail.userAvatar || '/static/img/default-avatar.png'" mode="aspectFill"></image>
 				<view class="user-meta">
-					<text class="username">{{ postDetail.username }}</text>
+					<text class="username">{{ postDetail.nickname || postDetail.username }}</text>
 					<text class="post-time">{{ formatTime(postDetail.createdAt) }}</text>
 				</view>
-				<view class="more-btn" @click.stop="showMoreActions">
-					<text class="more-icon">⋯</text>
+				<view class="user-actions">
+					<view class="follow-author" v-if="canFollowAuthor">
+						<button class="follow-author-btn" :class="{ following: postDetail.isAuthorFollowed }" :disabled="followLoading" @click.stop="toggleAuthorFollow" hover-class="follow-author-btn--active">
+							<text class="btn-icon" v-if="!postDetail.isAuthorFollowed">+</text>
+							<text class="btn-icon" v-else>✓</text>
+							<text class="btn-text">{{ postDetail.isAuthorFollowed ? '已关注' : '关注' }}</text>
+						</button>
+					</view>
 				</view>
 			</view>
 
@@ -33,21 +39,64 @@
 
 			<!-- 图片展示 -->
 			<view class="image-gallery" v-if="postDetail.imageUrls && postDetail.imageUrls.length">
-				<view class="image-grid" :class="`grid-${Math.min(postDetail.imageUrls.length, 3)}`">
+				<view class="image-grid" :class="[imageGridColumnsClass, imageLayoutClass]">
 					<image
 						v-for="(imageUrl, index) in postDetail.imageUrls.slice(0, 9)"
 						:key="index"
-						class="post-image"
+						:class="['post-image', { 'post-image--single': imageLayoutClass === 'layout-single' }]"
 						:src="imageUrl"
-						mode="aspectFill"
+						:mode="imageLayoutClass === 'layout-single' ? 'widthFix' : 'aspectFill'"
 						@click="previewImages(index)">
 					</image>
 				</view>
 			</view>
 
-			<!-- 视频播放 -->
-			<view class="video-container" v-if="postDetail.videoUrl">
-				<video class="post-video" :src="postDetail.videoUrl" controls></video>
+			<!-- 投票选项展示(仅投票帖显示) -->
+			<view class="poll-options" v-if="postDetail.postType === 1 && postDetail.pollOptions && postDetail.pollOptions.length">
+				<view class="poll-header">
+					<text class="poll-title">投票选项</text>
+					<text class="poll-status" v-if="postDetail.myVote">已投票</text>
+					<text class="poll-status pending" v-else>未投票</text>
+				</view>
+
+				<view class="poll-list">
+					<view
+						v-for="option in postDetail.pollOptions"
+						:key="option.id"
+						class="poll-option"
+						:class="{
+							'selected': postDetail.myVote === option.id,
+							'voted': postDetail.myVote !== null && postDetail.myVote !== undefined
+						}"
+						@click="handleVote(option.id)">
+
+						<!-- 投票选项内容 -->
+						<view class="poll-option-content">
+							<view class="option-text-wrapper">
+								<text class="option-text">{{ option.optionText }}</text>
+								<text class="check-mark" v-if="postDetail.myVote === option.id">✓</text>
+							</view>
+
+							<!-- 投票进度条(已投票时显示) -->
+							<view class="vote-bar" v-if="postDetail.myVote !== null && postDetail.myVote !== undefined">
+								<view class="vote-bar-fill" :style="{ width: getVotePercentage(option) + '%' }"></view>
+							</view>
+
+							<!-- 投票统计 -->
+							<view class="vote-stats">
+								<text class="vote-count">{{ option.voteCount || 0 }} 票</text>
+								<text class="vote-percentage" v-if="postDetail.myVote !== null && postDetail.myVote !== undefined">
+									{{ getVotePercentage(option) }}%
+								</text>
+							</view>
+						</view>
+					</view>
+				</view>
+
+				<!-- 总投票数 -->
+				<view class="poll-total">
+					<text class="total-text">共 {{ getTotalVotes() }} 人参与投票</text>
+				</view>
 			</view>
 
 			<!-- 标签列表 -->
@@ -75,10 +124,6 @@
 					<text class="action-icon" :class="{ 'collected': postDetail.isCollected }">⭐</text>
 					<text class="action-text">{{ postDetail.isCollected ? '已收藏' : '收藏' }}</text>
 				</view>
-				<view class="action-btn" @click="showShareOptions">
-					<text class="action-icon">📤</text>
-					<text class="action-text">分享</text>
-				</view>
 				<view class="action-btn" @click="showCommentInput">
 					<text class="action-icon">💬</text>
 					<text class="action-text">评论</text>
@@ -105,7 +150,7 @@
 					<view class="comment-user" @click="goToUserProfile(comment.userId)">
 						<image class="comment-avatar" :src="comment.userAvatar || '/static/img/default-avatar.png'" mode="aspectFill"></image>
 						<view class="comment-info">
-							<text class="comment-username">{{ comment.username }}</text>
+							<text class="comment-username">{{ comment.nickname || comment.username }}</text>
 							<text class="comment-time">{{ formatTime(comment.createdAt) }}</text>
 						</view>
 						<view class="comment-actions">
@@ -118,8 +163,8 @@
 					<!-- 评论内容 -->
 					<view class="comment-content">
 						<!-- 回复标识 -->
-						<text class="reply-to" v-if="comment.replyToUsername">
-							回复 @{{ comment.replyToUsername }}:
+						<text class="reply-to" v-if="comment.parentNickname || comment.replyToUsername">
+							回复 @{{ comment.parentNickname || comment.replyToUsername }}:
 						</text>
 						<text class="comment-text">{{ comment.content }}</text>
 					</view>
@@ -134,7 +179,7 @@
 					<!-- 子评论 -->
 					<view class="sub-comments" v-if="comment.replies && comment.replies.length">
 						<view class="sub-comment" v-for="reply in comment.replies.slice(0, 3)" :key="reply.id">
-							<text class="sub-comment-user">{{ reply.username }}</text>
+							<text class="sub-comment-user">{{ reply.nickname || reply.username }}</text>
 							<text class="sub-comment-content">: {{ reply.content }}</text>
 						</view>
 						<text class="more-replies" v-if="comment.replyCount > 3" @click="showMoreReplies(comment.id)">
@@ -156,7 +201,7 @@
 				<textarea
 					class="comment-textarea"
 					v-model="commentContent"
-					:placeholder="replyTarget ? `回复 @${replyTarget.username}` : '说点什么...'"
+					:placeholder="replyTarget ? `回复 @${replyTarget.nickname || replyTarget.username}` : '说点什么...'"
 					:maxlength="500"
 					auto-height>
 				</textarea>
@@ -167,614 +212,690 @@
 			</view>
 		</view>
 
-		<!-- 更多操作弹窗 -->
-		<uni-popup ref="moreActions" type="bottom">
-			<view class="popup-content">
-				<view class="popup-item" @click="sharePost">分享帖子</view>
-				<view class="popup-item" @click="copyLink">复制链接</view>
-				<view class="popup-item" @click="reportPost">举报帖子</view>
-				<view class="popup-item cancel" @click="$refs.moreActions.close()">取消</view>
-			</view>
-		</uni-popup>
 	</view>
 </template>
 
+
 <script>
-// 引入API和工具函数
 import { postApi, commentApi, actionApi } from '@/utils/api.js'
-import { getAuthInfo } from '@/utils/auth.js'
+import { getAuthInfo, verifyAndExecute, USER_ROLES } from '@/utils/auth.js'
+import PostSkeleton from '@/components/skeleton/post-skeleton.vue'
+import ErrorState from '@/components/error-state/error-state.vue'
 
 export default {
-	data() {
-		return {
-			// 页面状态
-			loading: true,
-
-			// 帖子信息
-			postDetail: null,
-			postId: null,
-
-			// 评论相关
-			commentList: [],
-			commentSort: 'hot', // hot | time
-			currentPage: 1,
-			pageSize: 20,
-			hasMoreComments: true,
-
-			// 评论输入
-			showCommentBox: false,
-			commentContent: '',
-			replyTarget: null, // 回复目标评论
-
-			// 用户信息
-			currentUser: null
-		}
-	},
-
-	onLoad(options) {
-		// 获取帖子ID参数
-		this.postId = options.id || options.postId
-		if (!this.postId) {
-			uni.showToast({ title: '帖子不存在', icon: 'error' })
-			uni.navigateBack()
-			return
-		}
-
-		// 获取当前用户信息
-		this.currentUser = getAuthInfo()
-
-		// 加载帖子详情
-		this.loadPostDetail()
-		this.loadComments()
-
-		// 增加浏览量
-		this.incrementViewCount()
-	},
-
-	onShow() {
-		// 页面显示时刷新数据（如从其他页面返回）
-		if (this.postDetail) {
-			this.loadPostDetail()
-		}
-	},
-
-	methods: {
-		/**
-		 * 加载帖子详情
-		 * 获取帖子的完整信息，包括用户交互状态
-		 */
-		async loadPostDetail() {
-			try {
-				this.loading = true
-				const response = await postApi.getPostDetail(this.postId)
-
-				if (response.code === 200) {
-					this.postDetail = response.data
-					// 设置页面标题为帖子标题
-					uni.setNavigationBarTitle({
-						title: this.postDetail.title || '帖子详情'
-					})
-				} else {
-					throw new Error(response.message || '获取帖子详情失败')
-				}
-			} catch (error) {
-				console.error('加载帖子详情失败:', error)
-				uni.showToast({
-					title: error.message || '加载失败',
-					icon: 'error'
-				})
-				// 如果帖子不存在，返回上一页
-				setTimeout(() => {
-					uni.navigateBack()
-				}, 1500)
-			} finally {
-				this.loading = false
-			}
-		},
-
-		/**
-		 * 增加帖子浏览量
-		 * 用户进入页面时自动增加浏览计数
-		 */
-		async incrementViewCount() {
-			try {
-				await postApi.addPostView(this.postId)
-				// 浏览量在后台自动增加，无需更新UI
-			} catch (error) {
-				console.error('增加浏览量失败:', error)
-				// 浏览量增加失败不影响用户体验，静默处理
-			}
-		},
-
-		/**
-		 * 加载评论列表
-		 * 支持分页和排序
-		 */
-		async loadComments(refresh = false) {
-			try {
-				if (refresh) {
-					this.currentPage = 1
-					this.commentList = []
-					this.hasMoreComments = true
-				}
-
-				const params = {
-					current: this.currentPage,
-					size: this.pageSize,
-					sort: this.commentSort
-				}
-
-				const response = await commentApi.getPostComments(this.postId, params)
-
-				if (response.code === 200) {
-					const newComments = response.data.records || []
-
-					if (refresh) {
-						this.commentList = newComments
-					} else {
-						this.commentList = [...this.commentList, ...newComments]
-					}
-
-					// 检查是否还有更多评论
-					this.hasMoreComments = this.commentList.length < response.data.total
-
-					// 为每个评论加载子评论
-					await this.loadRepliesForComments(newComments)
-				} else {
-					throw new Error(response.message || '获取评论失败')
-				}
-			} catch (error) {
-				console.error('加载评论失败:', error)
-				uni.showToast({
-					title: error.message || '加载评论失败',
-					icon: 'error'
-				})
-			}
-		},
-
-		/**
-		 * 为评论加载子评论
-		 * @param {Array} comments - 评论列表
-		 */
-		async loadRepliesForComments(comments) {
-			for (const comment of comments) {
-				if (comment.replyCount > 0) {
-					try {
-						const response = await commentApi.getReplies(comment.id)
-						if (response.code === 200) {
-							comment.replies = response.data || []
-						}
-					} catch (error) {
-						console.error(`加载评论${comment.id}的回复失败:`, error)
-						comment.replies = []
-					}
-				}
-			}
-		},
-
-		/**
-		 * 加载更多评论
-		 */
-		loadMoreComments() {
-			if (this.hasMoreComments) {
-				this.currentPage++
-				this.loadComments()
-			}
-		},
-
-		/**
-		 * 切换评论排序方式
-		 * @param {string} sortType - 排序类型：hot | time
-		 */
-		changeCommentSort(sortType) {
-			if (this.commentSort !== sortType) {
-				this.commentSort = sortType
-				this.loadComments(true) // 刷新评论列表
-			}
-		},
-
-		/**
-		 * 切换帖子点赞状态
-		 */
-		async toggleLike() {
-			if (!this.currentUser?.userId) {
-				uni.showToast({ title: '请先登录', icon: 'error' })
-				return
-			}
-
-			try {
-				const response = await actionApi.toggleLike({
-					targetId: this.postId,
-					targetType: 'post'
-				})
-
-				if (response.code === 200) {
-					// 更新UI状态
-					this.postDetail.isLiked = !this.postDetail.isLiked
-					this.postDetail.likeCount += this.postDetail.isLiked ? 1 : -1
-
-					uni.showToast({
-						title: this.postDetail.isLiked ? '点赞成功' : '取消点赞',
-						icon: 'success'
-					})
-				} else {
-					throw new Error(response.message || '操作失败')
-				}
-			} catch (error) {
-				console.error('点赞操作失败:', error)
-				uni.showToast({
-					title: error.message || '操作失败',
-					icon: 'error'
-				})
-			}
-		},
-
-		/**
-		 * 切换帖子收藏状态
-		 */
-		async toggleCollect() {
-			if (!this.currentUser?.userId) {
-				uni.showToast({ title: '请先登录', icon: 'error' })
-				return
-			}
-
-			try {
-				const response = await actionApi.toggleCollect({
-					targetId: this.postId,
-					targetType: 'post'
-				})
-
-				if (response.code === 200) {
-					// 更新UI状态
-					this.postDetail.isCollected = !this.postDetail.isCollected
-					this.postDetail.collectCount += this.postDetail.isCollected ? 1 : -1
-
-					uni.showToast({
-						title: this.postDetail.isCollected ? '收藏成功' : '取消收藏',
-						icon: 'success'
-					})
-				} else {
-					throw new Error(response.message || '操作失败')
-				}
-			} catch (error) {
-				console.error('收藏操作失败:', error)
-				uni.showToast({
-					title: error.message || '操作失败',
-					icon: 'error'
-				})
-			}
-		},
-
-		/**
-		 * 切换评论点赞状态
-		 * @param {number} commentId - 评论ID
-		 */
-		async toggleCommentLike(commentId) {
-			if (!this.currentUser?.userId) {
-				uni.showToast({ title: '请先登录', icon: 'error' })
-				return
-			}
-
-			try {
-				const response = await actionApi.toggleLike({
-					targetId: commentId,
-					targetType: 'comment'
-				})
-
-				if (response.code === 200) {
-					// 找到对应评论并更新状态
-					const comment = this.commentList.find(c => c.id === commentId)
-					if (comment) {
-						comment.isLiked = !comment.isLiked
-						comment.likeCount += comment.isLiked ? 1 : -1
-					}
-				} else {
-					throw new Error(response.message || '操作失败')
-				}
-			} catch (error) {
-				console.error('评论点赞失败:', error)
-				uni.showToast({
-					title: error.message || '操作失败',
-					icon: 'error'
-				})
-			}
-		},
-
-		/**
-		 * 显示评论输入框
-		 */
-		showCommentInput() {
-			if (!this.currentUser?.userId) {
-				uni.showToast({ title: '请先登录', icon: 'error' })
-				return
-			}
-
-			this.showCommentBox = true
-			this.replyTarget = null
-			this.commentContent = ''
-		},
-
-		/**
-		 * 回复评论
-		 * @param {Object} comment - 要回复的评论对象
-		 */
-		replyToComment(comment) {
-			if (!this.currentUser?.userId) {
-				uni.showToast({ title: '请先登录', icon: 'error' })
-				return
-			}
-
-			this.showCommentBox = true
-			this.replyTarget = comment
-			this.commentContent = ''
-		},
-
-		/**
-		 * 提交评论
-		 */
-		async submitComment() {
-			if (!this.commentContent.trim()) {
-				uni.showToast({ title: '请输入评论内容', icon: 'error' })
-				return
-			}
-
-			try {
-				const commentData = {
-					postId: this.postId,
-					content: this.commentContent.trim()
-				}
-
-				// 如果是回复评论，添加父评论ID
-				if (this.replyTarget) {
-					commentData.parentId = this.replyTarget.id
-				}
-
-				const response = await commentApi.createComment(commentData)
-
-				if (response.code === 200) {
-					uni.showToast({ title: '评论成功', icon: 'success' })
-
-					// 清空输入框并隐藏
-					this.commentContent = ''
-					this.showCommentBox = false
-					this.replyTarget = null
-
-					// 刷新评论列表
-					this.loadComments(true)
-
-					// 更新帖子评论数
-					if (this.postDetail) {
-						this.postDetail.commentCount = (this.postDetail.commentCount || 0) + 1
-					}
-				} else {
-					throw new Error(response.message || '评论失败')
-				}
-			} catch (error) {
-				console.error('发表评论失败:', error)
-				uni.showToast({
-					title: error.message || '评论失败',
-					icon: 'error'
-				})
-			}
-		},
-
-		/**
-		 * 删除评论
-		 * @param {number} commentId - 评论ID
-		 */
-		async deleteComment(commentId) {
-			try {
-				await uni.showModal({
-					title: '确认删除',
-					content: '确定要删除这条评论吗？',
-					confirmText: '删除',
-					confirmColor: '#ff4757'
-				})
-
-				const response = await commentApi.deleteComment(commentId)
-
-				if (response.code === 200) {
-					uni.showToast({ title: '删除成功', icon: 'success' })
-
-					// 从列表中移除评论
-					this.commentList = this.commentList.filter(c => c.id !== commentId)
-
-					// 更新帖子评论数
-					if (this.postDetail) {
-						this.postDetail.commentCount = Math.max(0, (this.postDetail.commentCount || 0) - 1)
-					}
-				} else {
-					throw new Error(response.message || '删除失败')
-				}
-			} catch (error) {
-				console.error('删除评论失败:', error)
-				if (error.message !== 'cancel') {
-					uni.showToast({
-						title: error.message || '删除失败',
-						icon: 'error'
-					})
-				}
-			}
-		},
-
-		/**
-		 * 举报评论
-		 * @param {number} commentId - 评论ID
-		 */
-		reportComment(commentId) {
-			uni.navigateTo({
-				url: `/pages/report/report?targetType=comment&targetId=${commentId}`
-			})
-		},
-
-		/**
-		 * 举报帖子
-		 */
-		reportPost() {
-			this.$refs.moreActions.close()
-			uni.navigateTo({
-				url: `/pages/report/report?targetType=post&targetId=${this.postId}`
-			})
-		},
-
-		/**
-		 * 跳转到用户资料页
-		 * @param {number} userId - 用户ID
-		 */
-		goToUserProfile(userId) {
-			if (userId) {
-				uni.navigateTo({
-					url: `/pages/user-profile/user-profile?userId=${userId}`
-				})
-			}
-		},
-
-		/**
-		 * 按标签搜索
-		 * @param {number} tagId - 标签ID
-		 */
-		searchByTag(tagId) {
-			uni.navigateTo({
-				url: `/pages/search/search?tagId=${tagId}`
-			})
-		},
-
-		/**
-		 * 图片预览
-		 * @param {number} index - 当前图片索引
-		 */
-		previewImages(index) {
-			uni.previewImage({
-				urls: this.postDetail.imageUrls,
-				current: index
-			})
-		},
-
-		/**
-		 * 显示更多操作
-		 */
-		showMoreActions() {
-			this.$refs.moreActions.open()
-		},
-
-		/**
-		 * 显示分享选项
-		 */
-		showShareOptions() {
-			this.$refs.moreActions.open()
-		},
-
-		/**
-		 * 分享帖子
-		 */
-		async sharePost() {
-			this.$refs.moreActions.close()
-
-			try {
-				// 记录分享行为
-				await actionApi.recordShare({
-					targetId: this.postId,
-					targetType: 'post',
-					platform: 'system'
-				})
-
-				// 执行系统分享
-				uni.share({
-					provider: "weixin",
-					scene: "WXSceneSession",
-					type: 0,
-					href: `https://herizon.com/post/${this.postId}`,
-					title: this.postDetail.title || '查看这个精彩内容',
-					summary: this.postDetail.content.substring(0, 100),
-					imageUrl: this.postDetail.imageUrls?.[0] || '/static/img/logo.png',
-					success: () => {
-						uni.showToast({ title: '分享成功', icon: 'success' })
-					},
-					fail: (error) => {
-						console.error('分享失败:', error)
-						this.copyLink() // 分享失败时复制链接
-					}
-				})
-			} catch (error) {
-				console.error('分享操作失败:', error)
-				this.copyLink() // 出错时复制链接作为备选方案
-			}
-		},
-
-		/**
-		 * 复制帖子链接
-		 */
-		copyLink() {
-			this.$refs.moreActions.close()
-
-			const link = `https://herizon.com/post/${this.postId}`
-			uni.setClipboardData({
-				data: link,
-				success: () => {
-					uni.showToast({ title: '链接已复制', icon: 'success' })
-				},
-				fail: () => {
-					uni.showToast({ title: '复制失败', icon: 'error' })
-				}
-			})
-		},
-
-		/**
-		 * 显示更多回复
-		 * @param {number} commentId - 评论ID
-		 */
-		showMoreReplies(commentId) {
-			uni.navigateTo({
-				url: `/pages/comment-detail/comment-detail?commentId=${commentId}`
-			})
-		},
-
-		/**
-		 * 检查是否可以删除评论
-		 * @param {Object} comment - 评论对象
-		 * @returns {boolean} 是否可以删除
-		 */
-		canDeleteComment(comment) {
-			// 只有评论作者或管理员可以删除评论
-			return this.currentUser?.userId === comment.userId || this.currentUser?.role >= 2
-		},
-
-		/**
-		 * 格式化时间显示
-		 * @param {string} timeString - 时间字符串
-		 * @returns {string} 格式化后的时间
-		 */
-		formatTime(timeString) {
-			if (!timeString) return ''
-
-			const now = new Date()
-			const time = new Date(timeString)
-			const diff = now - time
-
-			const minute = 60 * 1000
-			const hour = 60 * minute
-			const day = 24 * hour
-			const week = 7 * day
-
-			if (diff < minute) {
-				return '刚刚'
-			} else if (diff < hour) {
-				return `${Math.floor(diff / minute)}分钟前`
-			} else if (diff < day) {
-				return `${Math.floor(diff / hour)}小时前`
-			} else if (diff < week) {
-				return `${Math.floor(diff / day)}天前`
-			} else {
-				return time.toLocaleDateString('zh-CN', {
-					year: 'numeric',
-					month: 'short',
-					day: 'numeric'
-				})
-			}
-		}
-	}
+  components: {
+    PostSkeleton,
+    ErrorState
+  },
+  data() {
+    return {
+      // ????
+      loading: true,
+
+      // ????
+      postDetail: null,
+      postId: null,
+
+      // ???
+      commentList: [],
+      commentSort: 'hot', // hot | time
+      currentPage: 1,
+      pageSize: 20,
+      hasMoreComments: true,
+      commentTotal: 0,
+      commentsLoading: false,
+
+      // ????
+      showCommentBox: false,
+      commentContent: '',
+      replyTarget: null, // ??????
+      commentSubmitting: false,
+
+      // ????
+      currentUser: null,
+      followLoading: false
+    }
+  },
+
+ computed: {
+    canFollowAuthor() {
+      if (!this.postDetail || !this.postDetail.userId) {
+        return false
+      }
+      if (!this.currentUser || !this.currentUser.userId) {
+        return true
+      }
+      return this.currentUser.userId !== this.postDetail.userId
+    },
+
+    imageGridColumnsClass() {
+      if (!this.postDetail || !Array.isArray(this.postDetail.imageUrls)) {
+        return 'grid-1'
+      }
+
+      const count = this.postDetail.imageUrls.length
+      if (count === 4) {
+        return 'grid-2'
+      }
+      if (count <= 3) {
+        return `grid-${count}`
+      }
+      return 'grid-3'
+    },
+
+    imageLayoutClass() {
+      if (!this.postDetail || !Array.isArray(this.postDetail.imageUrls)) {
+        return ''
+      }
+
+      const count = this.postDetail.imageUrls.length
+      if (count === 1) {
+        return 'layout-single'
+      }
+      if (count === 2 || count === 4) {
+        return 'layout-double'
+      }
+      return 'layout-multi'
+    }
+  },
+
+  onLoad(options) {
+    // ????ID??
+    this.postId = options.id || options.postId
+    if (!this.postId) {
+      uni.showToast({ title: '??????', icon: 'error' })
+      uni.navigateBack()
+      return
+    }
+
+    // ????????
+    this.currentUser = getAuthInfo()
+
+    // ?????????
+    this.loadPostDetail()
+    this.loadComments(true)
+
+    // ?????
+    this.incrementViewCount()
+  },
+
+  onShow() {
+    // ??????????????????
+    if (this.postDetail) {
+      this.loadPostDetail()
+    }
+  },
+
+  methods: {
+    async loadPostDetail() {
+      if (!this.postId) {
+        return
+      }
+
+      if (!this.postDetail) {
+        this.loading = true
+      }
+
+      try {
+        const detail = await postApi.getPostDetail(this.postId)
+        this.postDetail = this.normalizePostDetail(detail)
+      } catch (error) {
+        console.error('????????:', error)
+        uni.showToast({
+          title: error.message || '????',
+          icon: 'error'
+        })
+      } finally {
+        this.loading = false
+      }
+    },
+
+    normalizePostDetail(detail) {
+      if (!detail) {
+        return null
+      }
+
+      const ensureImageArray = (value) => {
+        if (Array.isArray(value)) {
+          return value
+        }
+        if (!value) {
+          return []
+        }
+        if (typeof value === 'string') {
+          try {
+            const parsed = JSON.parse(value)
+            if (Array.isArray(parsed)) {
+              return parsed
+            }
+          } catch (error) {
+            // ignore parse error
+          }
+          return value.split(',').map(item => item.trim()).filter(Boolean)
+        }
+        return []
+      }
+
+      const ensureObjectArray = (value) => {
+        if (Array.isArray(value)) {
+          return value
+        }
+        if (!value) {
+          return []
+        }
+        if (typeof value === 'string') {
+          try {
+            const parsed = JSON.parse(value)
+            if (Array.isArray(parsed)) {
+              return parsed
+            }
+          } catch (error) {
+            // ignore parse error
+          }
+        }
+        return []
+      }
+
+      return {
+        ...detail,
+        imageUrls: ensureImageArray(detail.imageUrls),
+        tags: ensureObjectArray(detail.tags),
+        pollOptions: ensureObjectArray(detail.pollOptions),
+        isLiked: Boolean(detail.isLiked),
+        isCollected: Boolean(detail.isCollected),
+        likeCount: detail.likeCount ?? 0,
+        viewCount: detail.viewCount ?? 0,
+        commentCount: detail.commentCount ?? 0,
+        collectCount: detail.collectCount ?? 0,
+        isAuthorFollowed: Boolean(detail.isAuthorFollowed)
+      }
+    },
+
+    async incrementViewCount() {
+      if (!this.postId) {
+        return
+      }
+
+      try {
+        await postApi.addPostView(this.postId)
+      } catch (error) {
+        console.warn('???????:', error)
+      }
+    },
+
+    async loadComments(reset = true) {
+      if (!this.postId || this.commentsLoading) {
+        return
+      }
+
+      if (!reset && !this.hasMoreComments) {
+        return
+      }
+
+      const nextPage = reset ? 1 : this.currentPage + 1
+      this.commentsLoading = true
+
+      try {
+        const result = await commentApi.getPostComments(this.postId, {
+          current: nextPage,
+          size: this.pageSize,
+          sort: this.commentSort
+        })
+
+        const records = Array.isArray(result?.records) ? result.records : []
+        const normalized = records
+          .map((item) => this.normalizeComment(item))
+          .filter(Boolean)
+
+        if (reset) {
+          this.commentList = normalized
+        } else {
+          this.commentList = this.commentList.concat(normalized)
+        }
+
+        this.currentPage = Number(result?.current ?? nextPage)
+        this.commentTotal = Number(result?.total ?? this.commentList.length)
+
+        if (result?.pages != null) {
+          this.hasMoreComments = this.currentPage < Number(result.pages)
+        } else {
+          this.hasMoreComments = normalized.length === this.pageSize
+        }
+      } catch (error) {
+        console.error('??????:', error)
+        uni.showToast({
+          title: error.message || '??????',
+          icon: 'error'
+        })
+      } finally {
+        this.commentsLoading = false
+      }
+    },
+
+    normalizeComment(comment) {
+      if (!comment) {
+        return null
+      }
+
+      const replies = Array.isArray(comment.replies)
+        ? comment.replies.map((reply) => ({
+            ...reply,
+            likeCount: reply.likeCount ?? 0,
+            isLiked: Boolean(reply.isLiked)
+          }))
+        : []
+
+      return {
+        ...comment,
+        replies,
+        likeCount: comment.likeCount ?? 0,
+        isLiked: Boolean(comment.isLiked)
+      }
+    },
+
+    loadMoreComments() {
+      if (this.commentsLoading || !this.hasMoreComments) {
+        return
+      }
+      this.loadComments(false)
+    },
+
+    closeMoreActions() {
+      if (this.$refs.moreActions && typeof this.$refs.moreActions.close === 'function') {
+        this.$refs.moreActions.close()
+      }
+    },
+
+    goToUserProfile(userId) {
+      if (userId) {
+        uni.navigateTo({
+          url: `/pages/user-profile/user-profile?userId=${userId}`
+        })
+      }
+    },
+
+    previewImages(startIndex) {
+      if (!this.postDetail?.imageUrls?.length) {
+        return
+      }
+
+      const urls = this.postDetail.imageUrls
+      const current = urls[startIndex] || urls[0]
+
+      uni.previewImage({
+        current,
+        urls
+      })
+    },
+
+    searchByTag(tagId) {
+      if (!tagId) {
+        return
+      }
+
+      uni.navigateTo({
+        url: `/pages/tag-posts/tag-posts?tagId=${tagId}`
+      })
+    },
+
+    toggleLike() {
+      if (!this.postDetail) {
+        return
+      }
+
+      verifyAndExecute(USER_ROLES.TRIAL, async () => {
+        try {
+          await actionApi.toggleLike({
+            targetId: this.postDetail.id || this.postId,
+            targetType: 'post'
+          })
+
+          const nextState = !this.postDetail.isLiked
+          this.postDetail.isLiked = nextState
+          const current = this.postDetail.likeCount ?? 0
+          this.postDetail.likeCount = nextState ? current + 1 : Math.max(current - 1, 0)
+
+          uni.showToast({
+            title: nextState ? '????' : '?????',
+            icon: 'success'
+          })
+        } catch (error) {
+          console.error('????????:', error)
+          uni.showToast({
+            title: error.message || '????',
+            icon: 'error'
+          })
+        }
+      }, {
+        loginPrompt: '???????'
+      })
+    },
+
+    toggleCollect() {
+      if (!this.postDetail) {
+        return
+      }
+
+      verifyAndExecute(USER_ROLES.TRIAL, async () => {
+        try {
+          await actionApi.toggleCollect({
+            targetId: this.postDetail.id || this.postId,
+            targetType: 'post'
+          })
+
+          const nextState = !this.postDetail.isCollected
+          this.postDetail.isCollected = nextState
+          const current = this.postDetail.collectCount ?? 0
+          this.postDetail.collectCount = nextState ? current + 1 : Math.max(current - 1, 0)
+
+          uni.showToast({
+            title: nextState ? '???' : '?????',
+            icon: 'success'
+          })
+        } catch (error) {
+          console.error('????????:', error)
+          uni.showToast({
+            title: error.message || '????',
+            icon: 'error'
+          })
+        }
+      }, {
+        loginPrompt: '???????'
+      })
+    },
+
+    toggleAuthorFollow() {
+      if (!this.postDetail || !this.postDetail.userId || this.followLoading) {
+        return
+      }
+
+      verifyAndExecute(USER_ROLES.TRIAL, async () => {
+        this.followLoading = true
+        try {
+          const response = await actionApi.toggleFollow({ targetUserId: this.postDetail.userId })
+          const result = response?.data || {}
+          const nextState = typeof result.isFollowing === 'boolean' ? result.isFollowing : !this.postDetail.isAuthorFollowed
+          this.postDetail.isAuthorFollowed = nextState
+          uni.showToast({
+            title: nextState ? '关注成功' : '已取消关注',
+            icon: 'success'
+          })
+        } catch (error) {
+          console.error('切换关注状态失败:', error)
+          uni.showToast({
+            title: error?.message || '操作失败',
+            icon: 'error'
+          })
+        } finally {
+          this.followLoading = false
+        }
+      }, {
+        loginPrompt: '登录后才能关注作者'
+      })
+    },
+
+    showCommentInput() {
+      verifyAndExecute(USER_ROLES.TRIAL, () => {
+        this.showCommentBox = true
+        this.replyTarget = null
+        this.commentContent = ''
+      }, {
+        loginPrompt: '???????'
+      })
+    },
+
+    changeCommentSort(sort) {
+      if (this.commentSort === sort) {
+        return
+      }
+      this.commentSort = sort
+      this.loadComments(true)
+    },
+
+    toggleCommentLike(commentId) {
+      const comment = this.commentList.find(item => item.id === commentId)
+      if (!comment) {
+        return
+      }
+
+      verifyAndExecute(USER_ROLES.VERIFIED, async () => {
+        try {
+          await actionApi.toggleLike({
+            targetId: commentId,
+            targetType: 'comment'
+          })
+
+          comment.isLiked = !comment.isLiked
+          comment.likeCount = comment.isLiked
+            ? (comment.likeCount ?? 0) + 1
+            : Math.max((comment.likeCount ?? 0) - 1, 0)
+        } catch (error) {
+          console.error('??????:', error)
+          uni.showToast({
+            title: error.message || '????',
+            icon: 'error'
+          })
+        }
+      }, {
+        loginPrompt: '?????????',
+        permissionPrompt: '????????????'
+      })
+    },
+
+    replyToComment(comment) {
+      if (!comment) {
+        return
+      }
+
+      if (!this.currentUser?.userId) {
+        uni.showToast({ title: '????', icon: 'error' })
+        return
+      }
+
+      this.showCommentBox = true
+      this.replyTarget = comment
+      this.commentContent = ''
+    },
+
+    deleteComment(commentId) {
+      const target = this.commentList.find(item => item.id === commentId)
+      if (!target) {
+        return
+      }
+
+      verifyAndExecute(USER_ROLES.VERIFIED, async () => {
+        try {
+          const { confirm } = await uni.showModal({
+            title: '????',
+            content: '???????????',
+            confirmText: '??',
+            confirmColor: '#ff4757'
+          })
+
+          if (!confirm) {
+            throw new Error('cancel')
+          }
+
+          await commentApi.deleteComment(commentId)
+
+          uni.showToast({ title: '????', icon: 'success' })
+
+          this.commentList = this.commentList.filter(item => item.id !== commentId)
+          this.commentTotal = Math.max(this.commentTotal - 1, 0)
+          if (this.postDetail) {
+            this.postDetail.commentCount = Math.max((this.postDetail.commentCount ?? 0) - 1, 0)
+          }
+        } catch (error) {
+          console.error('??????:', error)
+          if (error.message !== 'cancel') {
+            uni.showToast({
+              title: error.message || '????',
+              icon: 'error'
+            })
+          }
+        }
+      }, {
+        loginPrompt: '???????',
+        permissionPrompt: '????????????'
+      })
+    },
+
+    submitComment() {
+      const content = this.commentContent.trim()
+      if (!content) {
+        uni.showToast({ title: '???????', icon: 'error' })
+        return
+      }
+
+      if (this.commentSubmitting) {
+        return
+      }
+
+      verifyAndExecute(USER_ROLES.VERIFIED, async () => {
+        this.commentSubmitting = true
+        try {
+          const payload = {
+            postId: this.postId,
+            content
+          }
+
+          if (this.replyTarget?.id) {
+            payload.parentId = this.replyTarget.id
+          }
+
+          await commentApi.createComment(payload)
+
+          uni.showToast({ title: '????', icon: 'success' })
+
+          this.commentContent = ''
+          this.showCommentBox = false
+          this.replyTarget = null
+
+          await this.loadComments(true)
+          if (this.postDetail) {
+            this.postDetail.commentCount = (this.postDetail.commentCount ?? 0) + 1
+          }
+        } catch (error) {
+          console.error('??????:', error)
+          uni.showToast({
+            title: error.message || '????',
+            icon: 'error'
+          })
+        } finally {
+          this.commentSubmitting = false
+        }
+      }, {
+        loginPrompt: '???????',
+        permissionPrompt: '??????????'
+      })
+    },
+
+    reportPost() {
+      if (!this.postId) {
+        return
+      }
+
+      this.closeMoreActions()
+      uni.navigateTo({
+        url: `/pages/report/report?targetType=post&targetId=${this.postId}`
+      })
+    },
+
+    reportComment(commentId) {
+      if (!commentId) {
+        return
+      }
+
+      uni.navigateTo({
+        url: `/pages/report/report?targetType=comment&targetId=${commentId}`
+      })
+    },
+
+    showMoreReplies(commentId) {
+      uni.navigateTo({
+        url: `/pages/comment-detail/comment-detail?commentId=${commentId}`
+      })
+    },
+
+    canDeleteComment(comment) {
+      if (!comment) {
+        return false
+      }
+      return this.currentUser?.userId === comment.userId || this.currentUser?.role >= 2
+    },
+
+    async handleVote(optionId) {
+      if (!this.currentUser?.userId) {
+        uni.showToast({ title: '????', icon: 'error' })
+        return
+      }
+
+      if (this.postDetail?.myVote !== null && this.postDetail?.myVote !== undefined) {
+        uni.showToast({ title: '???????', icon: 'none' })
+        return
+      }
+
+      try {
+        await postApi.vote(this.postId, optionId)
+        uni.showToast({ title: '????', icon: 'success' })
+        await this.loadPostDetail()
+      } catch (error) {
+        console.error('????:', error)
+        uni.showToast({
+          title: error.message || '????',
+          icon: 'error'
+        })
+      }
+    },
+
+    getVotePercentage(option) {
+      const totalVotes = this.getTotalVotes()
+      if (totalVotes === 0) return 0
+
+      const voteCount = option.voteCount || 0
+      return Math.round((voteCount / totalVotes) * 100)
+    },
+
+    getTotalVotes() {
+      if (!this.postDetail?.pollOptions) return 0
+
+      return this.postDetail.pollOptions.reduce((total, option) => {
+        return total + (option.voteCount || 0)
+      }, 0)
+    },
+
+    formatTime(timeString) {
+      if (!timeString) return ''
+
+      const now = new Date()
+      const time = new Date(timeString)
+      const diff = now - time
+
+      const minute = 60 * 1000
+      const hour = 60 * minute
+      const day = 24 * hour
+      const week = 7 * day
+
+      if (diff < minute) {
+        return '??'
+      } else if (diff < hour) {
+        return `${Math.floor(diff / minute)}???`
+      } else if (diff < day) {
+        return `${Math.floor(diff / hour)}???`
+      } else if (diff < week) {
+        return `${Math.floor(diff / day)}??`
+      } else {
+        return time.toLocaleDateString('zh-CN', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        })
+      }
+    }
+  }
 }
 </script>
+
 
 <style scoped>
 /* 主容器样式 */
@@ -820,6 +941,71 @@ export default {
 
 .user-meta {
 	flex: 1;
+}
+
+.user-actions {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	flex-shrink: 0;
+}
+
+.follow-author {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+.follow-author-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12rpx;
+	height: 60rpx;
+	min-width: 160rpx;
+	padding: 0 32rpx;
+	border-radius: 999rpx;
+	border: none;
+	background: linear-gradient(135deg, #ff7a45, #ff4d4f);
+	box-shadow: 0 12rpx 28rpx rgba(255, 77, 79, 0.22);
+	color: #ffffff;
+	font-size: 26rpx;
+	font-weight: 500;
+	line-height: 1;
+	transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.follow-author-btn .btn-icon {
+	font-size: 32rpx;
+}
+
+.follow-author-btn .btn-text {
+	font-size: 26rpx;
+}
+
+.follow-author-btn.following {
+	background: linear-gradient(135deg, #f7f8fa, #eef1f5);
+	color: #5c6b80;
+	border: 1rpx solid rgba(92, 107, 128, 0.18);
+	box-shadow: none;
+}
+
+.follow-author-btn.following .btn-icon {
+	font-size: 28rpx;
+	color: #52c41a;
+}
+
+.follow-author-btn.following .btn-text {
+	color: inherit;
+}
+
+.follow-author-btn--active {
+	transform: scale(0.97);
+	box-shadow: 0 8rpx 20rpx rgba(255, 77, 79, 0.24);
+}
+
+.follow-author-btn[disabled] {
+	opacity: 0.6;
 }
 
 .username {
@@ -875,7 +1061,7 @@ export default {
 
 .image-grid {
 	display: grid;
-	gap: 10rpx;
+	gap: 16rpx;
 }
 
 .grid-1 {
@@ -883,27 +1069,178 @@ export default {
 }
 
 .grid-2 {
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .grid-3 {
-	grid-template-columns: 1fr 1fr 1fr;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.image-grid.layout-single {
+	justify-items: center;
+	gap: 20rpx;
 }
 
 .post-image {
 	width: 100%;
-	height: 200rpx;
-	border-radius: 12rpx;
+	height: 220rpx;
+	border-radius: 18rpx;
+	display: block;
+	background-color: #f5f6f8;
+	overflow: hidden;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* 视频容器 */
-.video-container {
-	padding: 0 30rpx 30rpx;
+.image-grid.layout-double .post-image {
+	height: 320rpx;
 }
 
-.post-video {
+.image-grid.layout-multi .post-image {
+	height: 220rpx;
+}
+
+.post-image--single {
+	height: auto;
+	max-height: 680rpx;
+	border-radius: 24rpx;
+	box-shadow: 0 16rpx 32rpx rgba(15, 35, 95, 0.12);
+	background-color: #ffffff;
+}
+
+.image-grid.layout-single .post-image {
 	width: 100%;
+}
+
+/* 投票选项样式 */
+.poll-options {
+	padding: 30rpx;
+	background-color: #f8f9fa;
+	margin: 0 30rpx 30rpx;
+	border-radius: 16rpx;
+}
+
+.poll-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24rpx;
+}
+
+.poll-title {
+	font-size: 28rpx;
+	font-weight: bold;
+	color: #333;
+}
+
+.poll-status {
+	font-size: 24rpx;
+	padding: 6rpx 16rpx;
+	border-radius: 20rpx;
+	background-color: #52c41a;
+	color: white;
+}
+
+.poll-status.pending {
+	background-color: #1890ff;
+}
+
+.poll-list {
+	margin-bottom: 20rpx;
+}
+
+.poll-option {
+	background-color: white;
 	border-radius: 12rpx;
+	padding: 24rpx;
+	margin-bottom: 16rpx;
+	border: 2rpx solid #e8e8e8;
+	transition: all 0.3s;
+}
+
+.poll-option:last-child {
+	margin-bottom: 0;
+}
+
+.poll-option.selected {
+	border-color: #1890ff;
+	background-color: #e6f7ff;
+}
+
+.poll-option.voted {
+	cursor: not-allowed;
+}
+
+.poll-option:active:not(.voted) {
+	transform: scale(0.98);
+}
+
+.poll-option-content {
+	width: 100%;
+}
+
+.option-text-wrapper {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 12rpx;
+}
+
+.option-text {
+	font-size: 28rpx;
+	color: #333;
+	font-weight: 500;
+	flex: 1;
+}
+
+.check-mark {
+	font-size: 32rpx;
+	color: #1890ff;
+	font-weight: bold;
+	margin-left: 16rpx;
+}
+
+.vote-bar {
+	height: 8rpx;
+	background-color: #e8e8e8;
+	border-radius: 4rpx;
+	overflow: hidden;
+	margin-bottom: 12rpx;
+}
+
+.vote-bar-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #1890ff 0%, #40a9ff 100%);
+	border-radius: 4rpx;
+	transition: width 0.5s ease;
+}
+
+.vote-stats {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.vote-count {
+	font-size: 24rpx;
+	color: #666;
+}
+
+.vote-percentage {
+	font-size: 24rpx;
+	color: #1890ff;
+	font-weight: bold;
+}
+
+.poll-total {
+	padding-top: 20rpx;
+	border-top: 1rpx solid #e8e8e8;
+}
+
+.total-text {
+	font-size: 24rpx;
+	color: #999;
+	display: block;
+	text-align: center;
 }
 
 /* 标签列表 */
@@ -1218,3 +1555,10 @@ export default {
 	margin-top: 20rpx;
 }
 </style>
+
+
+
+
+
+
+

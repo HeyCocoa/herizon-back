@@ -1,6 +1,6 @@
 <!-- 举报页面 - 举报内容和用户 -->
 <template>
-	<!-- 主容器：举报表单 -->
+	<!-- 主容器:举报表单 -->
 	<view class="report-container">
 		<!-- 举报对象信息 -->
 		<view class="report-target">
@@ -53,11 +53,11 @@
 		<view class="report-description">
 			<view class="section-title">
 				<text class="title-text">详细说明</text>
-				<text class="optional-mark">（选填）</text>
+				<text class="optional-mark">(选填)</text>
 			</view>
 			<textarea class="description-input"
 					  v-model="reportDescription"
-					  placeholder="请详细描述您举报的具体原因，这将有助于我们更好地处理您的举报"
+					  placeholder="请详细描述您举报的具体原因,这将有助于我们更好地处理您的举报"
 					  :maxlength="500"
 					  auto-height>
 			</textarea>
@@ -70,10 +70,10 @@
 		<view class="report-evidence">
 			<view class="section-title">
 				<text class="title-text">相关证据</text>
-				<text class="optional-mark">（选填）</text>
+				<text class="optional-mark">(选填)</text>
 			</view>
 			<view class="evidence-tip">
-				<text class="tip-text">您可以上传相关截图作为举报证据，最多3张</text>
+				<text class="tip-text">您可以上传相关截图作为举报证据,最多3张</text>
 			</view>
 			<view class="evidence-upload">
 				<view class="uploaded-images">
@@ -95,7 +95,7 @@
 				<text class="notice-text">举报须知</text>
 			</view>
 			<view class="notice-content">
-				<text class="notice-item">• 请确保举报内容真实有效，恶意举报将被处罚</text>
+				<text class="notice-item">• 请确保举报内容真实有效,恶意举报将被处罚</text>
 				<text class="notice-item">• 我们会在24小时内处理您的举报</text>
 				<text class="notice-item">• 处理结果会通过私信通知您</text>
 				<text class="notice-item">• 您的举报信息将严格保密</text>
@@ -286,27 +286,22 @@ export default {
 		 * 加载用户信息
 		 */
 		async loadUserInfo() {
-			const response = await userApi.getUserProfile(this.targetId)
-			if (response.code === 200) {
-				this.targetInfo = response.data
-			} else {
-				throw new Error('获取用户信息失败')
-			}
+			// request.js已解包Result对象
+			const result = await userApi.getUserProfile(this.targetId)
+			this.targetInfo = result
 		},
 
 		/**
 		 * 加载帖子信息
 		 */
 		async loadPostInfo() {
-			const response = await postApi.getPostDetail(this.targetId)
-			if (response.code === 200) {
-				this.targetInfo = {
-					title: response.data.title,
-					content: response.data.content,
-					authorName: response.data.username
-				}
-			} else {
-				throw new Error('获取帖子信息失败')
+			// request.js已解包Result对象
+			const result = await postApi.getPostDetail(this.targetId)
+			// 安全访问响应数据,防止null访问异常
+			this.targetInfo = {
+				title: result?.title || '',
+				content: result?.content || '',
+				authorName: result?.username || '未知用户'
 			}
 		},
 
@@ -314,14 +309,12 @@ export default {
 		 * 加载评论信息
 		 */
 		async loadCommentInfo() {
-			const response = await commentApi.getCommentDetail(this.targetId)
-			if (response.code === 200) {
-				this.targetInfo = {
-					content: response.data.content,
-					authorName: response.data.username
-				}
-			} else {
-				throw new Error('获取评论信息失败')
+			// request.js已解包Result对象
+			const result = await commentApi.getCommentDetail(this.targetId)
+			// 安全访问响应数据,防止null访问异常
+			this.targetInfo = {
+				content: result?.content || '',
+				authorName: result?.username || '未知用户'
 			}
 		},
 
@@ -371,7 +364,7 @@ export default {
 			try {
 				this.loading = true
 
-				// 上传证据图片（如果有）
+				// 上传证据图片(如果有)
 				const evidenceUrls = await this.uploadEvidenceImages()
 
 				// 构建举报数据
@@ -384,21 +377,18 @@ export default {
 				}
 
 				// 提交举报
-				const response = await actionApi.reportContent(reportData)
+				// request.js已解包Result对象
+				const result = await actionApi.reportContent(reportData)
 
-				if (response.code === 200) {
-					uni.showToast({
-						title: '举报提交成功',
-						icon: 'success'
-					})
+				uni.showToast({
+					title: '举报提交成功',
+					icon: 'success'
+				})
 
-					// 延时返回上一页
-					setTimeout(() => {
-						uni.navigateBack()
-					}, 1500)
-				} else {
-					throw new Error(response.message || '举报提交失败')
-				}
+				// 延时返回上一页
+				setTimeout(() => {
+					uni.navigateBack()
+				}, 1500)
 			} catch (error) {
 				console.error('提交举报失败:', error)
 				uni.showToast({
@@ -451,9 +441,11 @@ export default {
 			if (!this.targetInfo) return ''
 
 			if (this.targetType === 'post') {
-				return this.targetInfo.title || this.targetInfo.content.substring(0, 100)
+				// 安全访问:防止content为null或undefined时崩溃
+				return this.targetInfo.title || (this.targetInfo.content ? this.targetInfo.content.substring(0, 100) : '')
 			} else if (this.targetType === 'comment') {
-				return this.targetInfo.content.substring(0, 100)
+				// 安全访问:防止content为null或undefined时崩溃
+				return this.targetInfo.content ? this.targetInfo.content.substring(0, 100) : ''
 			}
 
 			return ''

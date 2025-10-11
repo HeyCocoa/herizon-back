@@ -41,6 +41,8 @@ public class UserService {
     @Autowired
     private WechatService wechatService;
 
+    @Autowired
+    private FollowService followService;
 
     /**
      * 密码加密器，使用BCrypt算法
@@ -101,7 +103,7 @@ public class UserService {
      */
     public UserProfileDTO login(UserLoginRequest request) {
         // 根据登录标识查找用户（支持用户名或邮箱）
-        User user = findUserByIdentifier(request.getIdentifier());
+        User user = findUserByIdentifier(request.getActualIdentifier());
 
         if (user == null) {
             throw new RuntimeException("用户不存在");
@@ -130,12 +132,17 @@ public class UserService {
      * @param userId 用户ID
      * @return 用户公开资料DTO，如果用户不存在返回null
      */
-    public UserProfileDTO getUserProfile(Long userId) {
+    public UserProfileDTO getUserProfile(Long userId, Long viewerUserId) {
         User user = userMapper.selectOneById(userId);
         if (user == null) {
             return null;
         }
-        return convertToProfileDTO(user, false);
+        UserProfileDTO profile = convertToProfileDTO(user, false);
+        if (viewerUserId != null && !viewerUserId.equals(userId)) {
+            profile.setIsFollowing(followService.isFollowing(viewerUserId, userId));
+            profile.setIsMutualFollow(followService.isFollowing(userId, viewerUserId));
+        }
+        return profile;
     }
 
     /**
@@ -164,34 +171,38 @@ public class UserService {
      * @return 更新后的用户资料DTO
      */
     @Transactional
-    public UserProfileDTO updateUserProfile(Long currentUserId, UserRegistrationRequest request) {
+    public UserProfileDTO updateUserProfile(Long currentUserId, UpdateProfileRequest request) {
         User user = userMapper.selectOneById(currentUserId);
         if (user == null) {
             throw new RuntimeException("用户不存在");
         }
 
-        // 检查用户名变更的唯一性
-        if (!user.getUsername().equals(request.getUsername()) &&
-            !isUsernameAvailable(request.getUsername())) {
-            throw new RuntimeException("用户名已存在");
+        boolean changed = false;
+
+        if (request.getNickname() != null) {
+            String trimmedNickname = request.getNickname().trim();
+            if (!trimmedNickname.isEmpty() && !trimmedNickname.equals(user.getNickname())) {
+                if (trimmedNickname.length() < 2 || trimmedNickname.length() > 20) {
+                    throw new RuntimeException("昵称长度需要在2-20个字符之间");
+                }
+                user.setNickname(trimmedNickname);
+                changed = true;
+            }
         }
 
-        // 检查邮箱变更的唯一性
-        if (!user.getEmail().equals(request.getEmail()) &&
-            !isEmailAvailable(request.getEmail())) {
-            throw new RuntimeException("邮箱已被注册");
+        if (request.getAvatar() != null) {
+            String trimmedAvatar = request.getAvatar().trim();
+            String currentAvatar = user.getAvatar() == null ? "" : user.getAvatar();
+            if (!trimmedAvatar.equals(currentAvatar)) {
+                user.setAvatar(trimmedAvatar.isEmpty() ? null : trimmedAvatar);
+                changed = true;
+            }
         }
 
-        // 更新允许修改的字段
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
-            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        if (changed) {
+            user.setUpdatedAt(LocalDateTime.now());
+            userMapper.update(user);
         }
-        user.setQuestionnaireData(request.getQuestionnaireData());
-        user.setUpdatedAt(LocalDateTime.now());
-
-        userMapper.update(user);
 
         return convertToProfileDTO(user, true);
     }
@@ -368,16 +379,23 @@ public class UserService {
         dto.setPostCount(postCount);
 
         // 计算用户获得的总点赞数
+        // 重要：MyBatis-Flex不支持表别名，必须使用完整表名
         QueryWrapper likeCountQuery = QueryWrapper.create()
                 .select("COUNT(*)")
-                .from("user_actions ua")
-                .leftJoin("posts p").on("ua.target_id = p.id")
-                .where("p.user_id = ?", user.getId())
-                .and("ua.target_type = 'post'")
-                .and("ua.action_type = 0")
-                .and("ua.deleted = 0");
+                .from("user_actions")
+                .leftJoin("posts").on("user_actions.target_id = posts.id")
+                .where("posts.user_id = ?", user.getId())
+                .and("user_actions.target_type = 'post'")
+                .and("user_actions.action_type = 0")
+                .and("user_actions.deleted = 0");
         int totalLikes = (int) userActionMapper.selectCountByQuery(likeCountQuery);
         dto.setTotalLikes(totalLikes);
+
+        // ������ע/��˿����
+        dto.setFollowingCount(followService.countFollowing(user.getId()));
+        dto.setFollowersCount(followService.countFollowers(user.getId()));
+        dto.setIsFollowing(Boolean.FALSE);
+        dto.setIsMutualFollow(Boolean.FALSE);
 
         return dto;
     }
@@ -849,5 +867,63 @@ public class UserService {
         }
 
         return userInfo;
+    }
+
+    /**
+     * 获取用户统计数据
+     * <p>
+     * 统计用户的发帖数、关注数、粉丝数、获赞数、被收藏数
+     * 所有计数都通过实时查询获取，确保数据准确性
+     *
+     * @param userId 用户ID
+     * @return 用户统计数据DTO
+     * @throws RuntimeException 当用户不存在时抛出
+     */
+    public UserStatsDTO getUserStats(Long userId) {
+        // Step 1: 验证用户存在
+        User user = userMapper.selectOneById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+
+        // Step 2: 统计发帖数量
+        QueryWrapper postsQuery = QueryWrapper.create()
+                .select("COUNT(*)")
+                .from("posts")
+                .where("user_id = ? AND deleted = 0", userId);
+        Object postsCountObj = postMapper.selectObjectByQuery(postsQuery);
+        Long postsCount = postsCountObj != null ? ((Number) postsCountObj).longValue() : 0L;
+
+        // Step 3: 统计关注数量（用户关注的其他人）
+        Long followingCount = followService.countFollowing(userId);
+        Long followersCount = followService.countFollowers(userId);
+// Step 5: 统计获赞总数（用户的帖子被点赞的总数）
+        QueryWrapper likesQuery = QueryWrapper.create()
+                .select("COUNT(*)")
+                .from("user_actions")
+                .where("target_id IN (SELECT id FROM posts WHERE user_id = ? AND deleted = 0) " +
+                       "AND action_type = 0 AND deleted = 0 AND target_type = 'post'", userId);
+        Object likesCountObj = userActionMapper.selectObjectByQuery(likesQuery);
+        Long likesCount = likesCountObj != null ? ((Number) likesCountObj).longValue() : 0L;
+
+        // Step 6: 统计被收藏总数（用户的帖子被收藏的总数）
+        QueryWrapper collectsQuery = QueryWrapper.create()
+                .select("COUNT(*)")
+                .from("user_actions")
+                .where("target_id IN (SELECT id FROM posts WHERE user_id = ? AND deleted = 0) " +
+                       "AND action_type = 1 AND deleted = 0 AND target_type = 'post'", userId);
+        Object collectsCountObj = userActionMapper.selectObjectByQuery(collectsQuery);
+        Long collectsCount = collectsCountObj != null ? ((Number) collectsCountObj).longValue() : 0L;
+
+        // Step 7: 构建并返回统计DTO
+        UserStatsDTO stats = new UserStatsDTO();
+        stats.setUserId(userId);
+        stats.setPostsCount(postsCount);
+        stats.setFollowingCount(followingCount);
+        stats.setFollowersCount(followersCount);
+        stats.setLikesCount(likesCount);
+        stats.setCollectsCount(collectsCount);
+
+        return stats;
     }
 }

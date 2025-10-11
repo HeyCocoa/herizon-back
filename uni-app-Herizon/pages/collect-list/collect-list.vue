@@ -1,7 +1,7 @@
 <!-- 收藏列表页 - 收藏的帖子管理 -->
 <template>
-	<!-- 主容器：收藏列表 -->
-	<view class="collect-list-container">
+	<!-- 主容器:收藏列表 -->
+	<view class="collect-page">
 		<!-- 顶部操作栏 -->
 		<view class="top-actions" v-if="collectList.length > 0">
 			<view class="action-left">
@@ -20,44 +20,41 @@
 					 @scrolltolower="loadMoreCollects"
 					 refresher-enabled="true"
 					 :refresher-triggered="isRefreshing"
-					 @refresherrefresh="refreshCollects">
+					 @refresherrefresh="refreshCollects"
+					 show-scrollbar="false">
 
 			<!-- 收藏项 -->
 			<view class="collect-item" v-for="(item, index) in collectList" :key="item.id">
-				<!-- 选择框（编辑模式） -->
-				<view class="select-box" v-if="isEditMode" @click="toggleSelect(index)">
-					<text class="select-icon" :class="{ 'selected': item.selected }">
-						{{ item.selected ? '✓' : '○' }}
-					</text>
-				</view>
+				<view class="collect-card" :class="{ 'with-select': isEditMode }" @click="goToPostDetail(item.postId)">
+					<view class="collect-card-main">
+						<view class="post-info">
+							<view class="post-header">
+								<text class="post-title">{{ item.postTitle || item.postContent.substring(0, 30) + '...' }}</text>
+								<text class="collect-time">{{ formatTime(item.createdAt) }}</text>
+							</view>
+							<view class="post-summary">
+								<text class="post-text">{{ item.postContent.substring(0, 100) }}{{ item.postContent.length > 100 ? '...' : '' }}</text>
+							</view>
+							<view class="post-meta">
+								<text class="post-author">@{{ item.postAuthor }}</text>
+								<text class="post-stats">{{ item.postLikeCount }}赞 · {{ item.postCommentCount }}评论</text>
+							</view>
+						</view>
 
-				<!-- 帖子内容 -->
-				<view class="collect-content" @click="goToPostDetail(item.postId)">
-					<!-- 帖子信息 -->
-					<view class="post-info">
-						<view class="post-header">
-							<text class="post-title">{{ item.postTitle || item.postContent.substring(0, 30) + '...' }}</text>
-							<text class="collect-time">{{ formatTime(item.createdAt) }}</text>
+						<view class="post-thumb" v-if="item.postImage">
+							<image class="thumb-image" :src="item.postImage" mode="aspectFill"></image>
 						</view>
-						<view class="post-summary">
-							<text class="post-text">{{ item.postContent.substring(0, 100) }}{{ item.postContent.length > 100 ? '...' : '' }}</text>
-						</view>
-						<view class="post-meta">
-							<text class="post-author">@{{ item.postAuthor }}</text>
-							<text class="post-stats">{{ item.postLikeCount }}赞 · {{ item.postCommentCount }}评论</text>
-						</view>
-					</view>
-
-					<!-- 帖子图片 -->
-					<view class="post-thumb" v-if="item.postImage">
-						<image class="thumb-image" :src="item.postImage" mode="aspectFill"></image>
 					</view>
 				</view>
 
-				<!-- 快捷操作（非编辑模式） -->
 				<view class="quick-actions" v-if="!isEditMode">
-					<text class="action-btn" @click="sharePost(item)">分享</text>
 					<text class="action-btn" @click="removeCollect(item.id)">取消收藏</text>
+				</view>
+
+				<view class="select-overlay" v-if="isEditMode" @click.stop="toggleSelect(index)">
+					<view class="select-circle" :class="{ selected: item.selected }">
+						<text class="select-icon">{{ item.selected ? '✔' : '' }}</text>
+					</view>
 				</view>
 			</view>
 
@@ -83,9 +80,6 @@
 				</text>
 			</view>
 			<view class="batch-actions">
-				<button class="batch-btn share-btn" :disabled="selectedCount === 0" @click="batchShare">
-					分享({{ selectedCount }})
-				</button>
 				<button class="batch-btn delete-btn" :disabled="selectedCount === 0" @click="batchRemove">
 					删除({{ selectedCount }})
 				</button>
@@ -96,8 +90,8 @@
 
 <script>
 // 引入API和工具函数
-import { actionApi, postApi } from '@/utils/api.js'
-import { getAuthInfo } from '@/utils/auth.js'
+import { actionApi } from '@/utils/api.js'
+import { getAuthInfo, getUserId } from '@/utils/auth.js'
 
 export default {
 	data() {
@@ -139,11 +133,16 @@ export default {
 
 	onLoad() {
 		// 获取当前用户信息
-		this.currentUser = getAuthInfo()
-		if (!this.currentUser?.userId) {
+		this.currentUser = getAuthInfo() || {}
+		const userId = getUserId()
+		if (!userId) {
 			uni.showToast({ title: '请先登录', icon: 'error' })
 			uni.navigateBack()
 			return
+		}
+
+		if (!this.currentUser.userId) {
+			this.currentUser.userId = this.currentUser.id || userId
 		}
 
 		// 加载收藏列表
@@ -165,17 +164,29 @@ export default {
 
 				this.loading = true
 
-				// 模拟收藏数据（实际应该调用收藏API）
-				const mockCollects = await this.getMockCollectData()
-
-				if (refresh) {
-					this.collectList = mockCollects.list
-				} else {
-					this.collectList = [...this.collectList, ...mockCollects.list]
+				const userId = this.currentUser.userId || getUserId()
+				if (!userId) {
+					throw new Error('用户未登录')
 				}
 
-				this.totalCount = mockCollects.total
-				this.hasMoreData = this.collectList.length < this.totalCount
+				const params = {
+					current: this.currentPage,
+					size: this.pageSize
+				}
+
+				const result = await actionApi.getCollections(userId, params)
+				const records = Array.isArray(result?.records) ? result.records : []
+				const mappedCollects = records.map(item => this.transformCollectItem(item))
+
+				if (refresh) {
+					this.collectList = mappedCollects
+				} else {
+					this.collectList = [...this.collectList, ...mappedCollects]
+				}
+
+				const total = typeof result?.total === 'number' ? result.total : this.collectList.length
+				this.totalCount = total
+				this.hasMoreData = this.collectList.length < total
 			} catch (error) {
 				console.error('加载收藏列表失败:', error)
 				uni.showToast({
@@ -188,56 +199,28 @@ export default {
 		},
 
 		/**
-		 * 获取模拟收藏数据
+		 * 标准化收藏数据
 		 */
-		async getMockCollectData() {
-			// 模拟API延时
-			await new Promise(resolve => setTimeout(resolve, 500))
+		transformCollectItem(raw) {
+			const firstImage = Array.isArray(raw?.imageUrls) ? (raw.imageUrls[0] || '') : (raw?.postImage || raw?.coverImage || '')
+			const contentText = (raw?.postContent || raw?.content || '') || ''
 
-			const mockList = [
-				{
-					id: 1,
-					postId: 101,
-					postTitle: '职场女性如何平衡工作与生活',
-					postContent: '在现代社会中，职场女性面临着前所未有的挑战。如何在追求事业成功的同时，保持工作与生活的平衡...',
-					postAuthor: '张小美',
-					postImage: '/static/img/post1.jpg',
-					postLikeCount: 89,
-					postCommentCount: 23,
-					createdAt: '2025-01-15T10:30:00Z',
-					selected: false
-				},
-				{
-					id: 2,
-					postId: 102,
-					postTitle: '创业路上的那些坑',
-					postContent: '作为一名女性创业者，我想分享一些创业路上遇到的挑战和经验。希望能够帮助到更多有创业想法的姐妹们...',
-					postAuthor: '李创业',
-					postImage: '',
-					postLikeCount: 156,
-					postCommentCount: 45,
-					createdAt: '2025-01-14T15:20:00Z',
-					selected: false
-				},
-				{
-					id: 3,
-					postId: 103,
-					postTitle: '投资理财小白的入门指南',
-					postContent: '作为一个刚开始学习投资理财的小白，我总结了一些基础知识和实用技巧，希望对同样想要开始理财的姐妹有帮助...',
-					postAuthor: '财女王',
-					postImage: '/static/img/post2.jpg',
-					postLikeCount: 234,
-					postCommentCount: 67,
-					createdAt: '2025-01-13T09:15:00Z',
-					selected: false
-				}
-			]
+			const normalized = {
+				...raw,
+				id: raw?.id ?? raw?.postId,
+				postId: raw?.postId ?? raw?.id,
+				postTitle: raw?.postTitle || raw?.title || '',
+				postContent: contentText,
+				postAuthor: raw?.postAuthor || raw?.authorNickname || raw?.authorUsername || raw?.nickname || raw?.username || '匿名用户',
+				postLikeCount: raw?.postLikeCount ?? raw?.likeCount ?? 0,
+				postCommentCount: raw?.postCommentCount ?? raw?.commentCount ?? 0,
+				postImage: firstImage,
+				createdAt: raw?.createdAt || raw?.collectedAt || raw?.updatedAt || ''
+			}
 
 			return {
-				list: this.currentPage === 1 ? mockList : [],
-				total: mockList.length,
-				current: this.currentPage,
-				size: this.pageSize
+				...normalized,
+				selected: false
 			}
 		},
 
@@ -300,7 +283,7 @@ export default {
 			try {
 				await uni.showModal({
 					title: '确认取消收藏',
-					content: '确定要取消收藏这个内容吗？',
+					content: '确定要取消收藏这个内容吗?',
 					confirmText: '取消收藏',
 					confirmColor: '#ff4757'
 				})
@@ -333,7 +316,7 @@ export default {
 			try {
 				await uni.showModal({
 					title: '确认批量删除',
-					content: `确定要删除选中的${this.selectedCount}个收藏吗？`,
+					content: `确定要删除选中的${this.selectedCount}个收藏吗?`,
 					confirmText: '删除',
 					confirmColor: '#ff4757'
 				})
@@ -362,61 +345,6 @@ export default {
 					})
 				}
 			}
-		},
-
-		/**
-		 * 分享帖子
-		 * @param {Object} item - 收藏项
-		 */
-		sharePost(item) {
-			const shareData = {
-				title: item.postTitle || '精彩内容分享',
-				summary: item.postContent.substring(0, 100),
-				href: `https://herizon.com/post/${item.postId}`,
-				imageUrl: item.postImage || '/static/img/logo.png'
-			}
-
-			uni.share({
-				...shareData,
-				success: () => {
-					uni.showToast({ title: '分享成功', icon: 'success' })
-				},
-				fail: () => {
-					// 分享失败时复制链接
-					uni.setClipboardData({
-						data: shareData.href,
-						success: () => {
-							uni.showToast({ title: '链接已复制', icon: 'success' })
-						}
-					})
-				}
-			})
-		},
-
-		/**
-		 * 批量分享
-		 */
-		batchShare() {
-			if (this.selectedCount === 0) return
-
-			const selectedItems = this.collectList.filter(item => item.selected)
-			let shareText = '我在Herizon发现了这些精彩内容：\n\n'
-
-			selectedItems.forEach((item, index) => {
-				shareText += `${index + 1}. ${item.postTitle || item.postContent.substring(0, 30)}\n`
-				shareText += `https://herizon.com/post/${item.postId}\n\n`
-			})
-
-			uni.setClipboardData({
-				data: shareText,
-				success: () => {
-					uni.showToast({ title: '分享内容已复制', icon: 'success' })
-					this.toggleEditMode() // 退出编辑模式
-				},
-				fail: () => {
-					uni.showToast({ title: '分享失败', icon: 'error' })
-				}
-			})
 		},
 
 		/**
@@ -492,8 +420,7 @@ export default {
 </script>
 
 <style scoped>
-/* 主容器样式 */
-.collect-list-container {
+.collect-page {
 	min-height: 100vh;
 	background-color: #f5f5f5;
 	padding-bottom: 120rpx;
@@ -504,9 +431,11 @@ export default {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding: 30rpx;
-	background-color: white;
-	border-bottom: 1rpx solid #f0f0f0;
+	margin: 0 30rpx 20rpx;
+	padding: 26rpx 30rpx;
+	background-color: #ffffff;
+	border-radius: 12rpx;
+	box-shadow: 0 8rpx 24rpx rgba(15, 35, 95, 0.06);
 }
 
 .action-left {
@@ -534,51 +463,41 @@ export default {
 
 /* 收藏滚动视图 */
 .collect-scroll {
-	height: calc(100vh - 120rpx);
-	padding: 20rpx 30rpx;
+	height: calc(100vh - 200rpx);
+	padding: 0 30rpx 30rpx;
+	box-sizing: border-box;
 }
 
 /* 收藏项 */
 .collect-item {
-	display: flex;
-	align-items: flex-start;
-	background-color: white;
 	margin-bottom: 20rpx;
+	background-color: #ffffff;
 	border-radius: 12rpx;
+	box-shadow: 0 12rpx 32rpx rgba(15, 35, 95, 0.06);
 	overflow: hidden;
+	position: relative;
 }
 
-/* 选择框 */
-.select-box {
+.collect-card {
+	padding: 28rpx;
+	padding-bottom: 0;
+	box-sizing: border-box;
+}
+
+.collect-card.with-select {
+	padding-left: 100rpx;
+}
+
+.collect-card-main {
 	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 80rpx;
-	height: 80rpx;
-	padding: 30rpx 0;
+	gap: 24rpx;
+	align-items: flex-start;
+	min-width: 0;
 }
 
-.select-icon {
-	font-size: 36rpx;
-	color: #ccc;
-}
-
-.select-icon.selected {
-	color: #1890ff;
-}
-
-/* 收藏内容 */
-.collect-content {
-	flex: 1;
-	display: flex;
-	padding: 30rpx;
-	padding-left: 0;
-}
-
-/* 帖子信息 */
 .post-info {
 	flex: 1;
-	margin-right: 20rpx;
+	min-width: 0;
 }
 
 .post-header {
@@ -591,16 +510,18 @@ export default {
 .post-title {
 	flex: 1;
 	font-size: 30rpx;
-	font-weight: bold;
-	color: #333;
+	font-weight: 600;
+	color: #1f2933;
 	line-height: 1.4;
 	margin-right: 16rpx;
+	word-break: break-word;
+	overflow-wrap: break-word;
 }
 
 .collect-time {
 	flex-shrink: 0;
 	font-size: 22rpx;
-	color: #999;
+	color: #9aa5b1;
 }
 
 .post-summary {
@@ -609,8 +530,10 @@ export default {
 
 .post-text {
 	font-size: 26rpx;
-	color: #666;
-	line-height: 1.5;
+	color: #52606d;
+	line-height: 1.6;
+	word-break: break-word;
+	overflow-wrap: break-word;
 }
 
 .post-meta {
@@ -626,37 +549,76 @@ export default {
 
 .post-stats {
 	font-size: 22rpx;
-	color: #999;
+	color: #9aa5b1;
 }
 
-/* 帖子缩略图 */
 .post-thumb {
 	flex-shrink: 0;
+	width: 150rpx;
+	height: 150rpx;
+	border-radius: 12rpx;
+	overflow: hidden;
+	background-color: #f5f7fa;
 }
 
 .thumb-image {
-	width: 120rpx;
-	height: 120rpx;
-	border-radius: 8rpx;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
 }
 
 /* 快捷操作 */
 .quick-actions {
 	display: flex;
-	flex-direction: column;
-	gap: 20rpx;
-	padding: 30rpx 20rpx;
-	border-left: 1rpx solid #f0f0f0;
+	width: 100%;
+	border-top: 1rpx solid #f0f0f0;
+	gap: 1rpx;
+	padding: 0;
+	background-color: #fff;
 }
 
 .action-btn {
-	font-size: 24rpx;
+	flex: 1;
+	font-size: 26rpx;
 	color: #666;
 	text-align: center;
-	padding: 12rpx;
-	background-color: #f5f5f5;
-	border-radius: 8rpx;
-	min-width: 100rpx;
+	padding: 24rpx;
+	background-color: #fafafa;
+}
+
+.action-btn:active {
+	background-color: #f0f5ff;
+}
+
+/* 编辑模式选择 */
+.select-overlay {
+	position: absolute;
+	top: 28rpx;
+	left: 30rpx;
+	z-index: 2;
+}
+
+.collect-card.with-select .collect-card-main {
+	position: relative;
+}
+
+.select-circle {
+	width: 56rpx;
+	height: 56rpx;
+	border-radius: 50%;
+	border: 2rpx solid #d9d9d9;
+	background-color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #ccc;
+	font-size: 32rpx;
+}
+
+.select-circle.selected {
+	background-color: #1890ff;
+	border-color: #1890ff;
+	color: #fff;
 }
 
 /* 空状态 */
@@ -750,10 +712,6 @@ export default {
 	border-radius: 35rpx;
 }
 
-.share-btn {
-	background-color: #1890ff;
-	color: white;
-}
 
 .delete-btn {
 	background-color: #ff4757;

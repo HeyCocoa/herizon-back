@@ -1,8 +1,8 @@
-<!-- 个人中心页面 - 用户信息和功能管理 -->
+﻿<!-- 个人中心页面 - 用户信息和功能管理 -->
 <template>
-	<!-- 主容器：个人中心 -->
+	<!-- 主容器:个人中心 -->
 	<view class="profile-container">
-		<!-- 统一的用户界面（适配登录和未登录状态） -->
+		<!-- 统一的用户界面(适配登录和未登录状态) -->
 		<scroll-view class="profile-content" scroll-y="true" refresher-enabled="true" :refresher-triggered="isRefreshing" @refresherrefresh="refreshUserData">
 			<!-- 用户信息卡片 -->
 			<view class="user-info-card">
@@ -28,11 +28,10 @@
 
 					<view class="user-details">
 						<view class="username-row">
-							<text class="username">{{ isLoggedIn ? (userInfo.nickname || userInfo.username) : '访客用户' }}</text>
+							<text class="username">{{ isLoggedIn ? (userInfo.nickname || '未设置昵称') : '访客用户' }}</text>
 							<view class="verified-icon" v-if="isLoggedIn && userInfo.role >= 1">✓</view>
 						</view>
 						<text class="user-bio" v-if="isLoggedIn && userInfo.bio">{{ userInfo.bio }}</text>
-						<text class="user-bio placeholder" v-if="isLoggedIn && !userInfo.bio" @click="verifyLoginAndExecute(0, editProfile)">点击添加个人简介</text>
 						<text class="user-bio placeholder" v-if="!isLoggedIn" @click="triggerLogin">登录后可设置个人简介</text>
 						<text class="join-date" v-if="isLoggedIn">{{ formatJoinDate(userInfo.createdAt) }}加入</text>
 						<text class="join-date" v-else>点击登录享受完整功能</text>
@@ -46,7 +45,7 @@
 
 				<!-- 用户数据统计 -->
 				<view class="user-stats">
-					<view class="stat-item" @click="verifyLoginAndExecute(0, viewMyPosts)">
+					<view class="stat-item">
 						<text class="stat-number">{{ isLoggedIn ? (userStats.postsCount || 0) : '-' }}</text>
 						<text class="stat-label">帖子</text>
 					</view>
@@ -58,10 +57,10 @@
 						<text class="stat-number">{{ isLoggedIn ? (userStats.followersCount || 0) : '-' }}</text>
 						<text class="stat-label">粉丝</text>
 					</view>
-					<view class="stat-item" @click="verifyLoginAndExecute(0, viewLikes)">
-						<text class="stat-number">{{ isLoggedIn ? (userStats.likesCount || 0) : '-' }}</text>
-						<text class="stat-label">获赞</text>
-					</view>
+				<view class="stat-item">
+					<text class="stat-number">{{ isLoggedIn ? (userStats.likesCount || 0) : '-' }}</text>
+					<text class="stat-label">获赞</text>
+				</view>
 				</view>
 
 				<!-- 身份认证提示 -->
@@ -69,47 +68,54 @@
 					<view class="prompt-icon">🔒</view>
 					<view class="prompt-content">
 						<text class="prompt-title">完成身份认证</text>
-						<text class="prompt-desc">解锁更多功能，享受完整体验</text>
+						<text class="prompt-desc">解锁更多功能,享受完整体验</text>
 					</view>
-					<view class="prompt-arrow">未开发</view>
+					<view class="prompt-arrow">›</view>
 				</view>
 			</view>
 
-			<!-- 功能菜单（系统变更后精简版） -->
+			<!-- 功能菜单(系统变更后精简版) -->
 			<view class="menu-section">
 				<view class="menu-title">我的</view>
 				<view class="menu-list">
+					<view class="menu-item" @click="verifyLoginAndExecute(0, viewMyPosts)">
+						<view class="menu-icon">📝</view>
+						<text class="menu-text">我的帖子</text>
+						<view class="menu-arrow">›</view>
+					</view>
 					<view class="menu-item" @click="verifyLoginAndExecute(0, viewCollections)">
 						<view class="menu-icon">⭐</view>
 						<text class="menu-text">我的收藏</text>
-						<view class="menu-arrow">未开发</view>
+						<view class="menu-arrow">›</view>
 					</view>
 				</view>
 			</view>
 
-			<!-- 设置菜单（系统变更后精简版） -->
+			<!-- 管理员菜单(仅管理员可见) -->
+			<view class="menu-section" v-if="isLoggedIn && userInfo.role === 2">
+				<view class="menu-title">管理员</view>
+				<view class="menu-list">
+					<view class="menu-item" @click="goToAdminPage">
+						<view class="menu-icon">👨‍💼</view>
+						<text class="menu-text">管理后台</text>
+						<view class="menu-arrow">›</view>
+					</view>
+				</view>
+			</view>
+
+			<!-- 设置菜单(系统功能快捷入口) -->
 			<view class="menu-section">
 				<view class="menu-title">设置</view>
 				<view class="menu-list">
-					<view class="menu-item" @click="verifyLoginAndExecute(0, accountSettings)">
-						<view class="menu-icon">⚙️</view>
-						<text class="menu-text">账号设置</text>
-						<view class="menu-arrow">未开发</view>
-					</view>
-					<view class="menu-item" @click="verifyLoginAndExecute(0, notificationSettings)">
-						<view class="menu-icon">🔔</view>
-						<text class="menu-text">通知设置</text>
-						<view class="menu-arrow">未开发</view>
-					</view>
-					<view class="menu-item" @click="helpCenter">
-						<view class="menu-icon">❓</view>
-						<text class="menu-text">帮助中心</text>
-						<view class="menu-arrow">√</view>
+					<view class="menu-item" @click="openFeedback">
+						<view class="menu-icon">💬</view>
+						<text class="menu-text">意见反馈</text>
+						<view class="menu-arrow">›</view>
 					</view>
 					<view class="menu-item" @click="aboutApp">
 						<view class="menu-icon">ℹ️</view>
 						<text class="menu-text">关于Herizon</text>
-						<view class="menu-arrow">√</view>
+						<view class="menu-arrow">›</view>
 					</view>
 				</view>
 			</view>
@@ -132,412 +138,304 @@
 </template>
 
 <script>
-	// 导入必要的工具和API
-	import { userApi, postApi } from '../../../utils/api.js'
-	import { isLoggedIn, USER_ROLES, getUserDisplayInfo, handleLogout, verifyAndExecute } from '../../../utils/auth.js'
+  // 基础工具与 API
+  import { userApi } from '../../../utils/api.js'
+  import { isLoggedIn, USER_ROLES, getAuthInfo, getUserId, handleLogout, verifyAndExecute } from '../../../utils/auth.js'
 
-	export default {
-		data() {
-			return {
-				// 登录状态
-				isLoggedIn: false,
+  const DEFAULT_USER_INFO = {
+    id: null,
+    username: '',
+    nickname: '',
+    avatar: '',
+    bio: '',
+    role: 0,
+    backgroundImage: '',
+    createdAt: ''
+  }
 
-				// 用户信息
-				userInfo: {
-					id: null,
-					username: '',
-					nickname: '',
-					avatar: '',
-					bio: '',
-					role: 0,
-					backgroundImage: '',
-					createdAt: ''
-				},
+  const DEFAULT_USER_STATS = {
+    postsCount: 0,
+    followingCount: 0,
+    followersCount: 0,
+    likesCount: 0
+  }
 
-				// 用户数据统计
-				userStats: {
-					postsCount: 0,
-					followingCount: 0,
-					followersCount: 0,
-					likesCount: 0
-				},
+  export default {
+    data() {
+      return {
+        isLoggedIn: false,
+        userInfo: { ...DEFAULT_USER_INFO },
+        userStats: { ...DEFAULT_USER_STATS },
+        isLoading: false,
+        isRefreshing: false
+      }
+    },
 
-				// 加载状态
-				isLoading: false,
-				isRefreshing: false
-			}
-		},
+    onShow() {
+      this.loadUserData({ showSkeleton: true })
+    },
 
-		/**
-		 * 页面加载时初始化
-		 */
-		onLoad() {
-			this.checkLoginStatus()
-			this.loadUserData()
-		},
+    methods: {
+      resetUserState() {
+        this.userInfo = { ...DEFAULT_USER_INFO }
+        this.userStats = { ...DEFAULT_USER_STATS }
+      },
 
-		/**
-		 * 页面显示时刷新数据
-		 */
-		onShow() {
-			this.checkLoginStatus()
-			if (this.isLoggedIn) {
-				this.loadUserData()
-			}
-		},
+      triggerLogin() {
+        uni.navigateTo({
+          url: '/pages/login/login'
+        })
+      },
 
-		methods: {
-			/**
-			 * 检查用户登录状态
-			 */
-			checkLoginStatus() {
-				this.isLoggedIn = isLoggedIn()
-				if (this.isLoggedIn) {
-					const userDisplayInfo = getUserDisplayInfo()
-					this.userInfo = {
-						...this.userInfo,
-						...userDisplayInfo
-					}
-				}
-			},
+      verifyLoginAndExecute(requiredRole, action, options = {}) {
+        verifyAndExecute(requiredRole, () => {
+          if (typeof action === 'function') {
+            action.call(this)
+          }
+        }, {
+          loginPrompt: '请先登录',
+          permissionPrompt: '权限不足',
+          showTrialUpgrade: true,
+          ...options
+        })
+      },
 
-			/**
-			 * 权限验证并执行操作
-			 * @param {number} requiredRole - 所需角色级别
-			 * @param {Function} action - 要执行的操作
-			 */
-			verifyLoginAndExecute(requiredRole, action) {
-				verifyAndExecute(requiredRole, action, {
-					loginPrompt: '请先登录后使用此功能'
-				})
-			},
+      handleAvatarClick() {
+        if (this.isLoggedIn) {
+          this.verifyLoginAndExecute(USER_ROLES.TRIAL, this.editProfile)
+        } else {
+          this.triggerLogin()
+        }
+      },
 
-			/**
-			 * 触发登录流程
-			 */
-			triggerLogin() {
-				uni.navigateTo({
-					url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/tabbar/tabbar-5/tabbar-5')
-				})
-			},
+      editProfile() {
+        uni.navigateTo({
+          url: '/pages/edit-profile/edit-profile'
+        })
+      },
 
-			/**
-			 * 处理头像点击
-			 */
-			handleAvatarClick() {
-				if (this.isLoggedIn && this.userInfo.avatar) {
-					this.previewAvatar()
-				} else {
-					this.triggerLogin()
-				}
-			},
+      viewFollowing() {
+        const title = encodeURIComponent('关注列表')
+        const userId = this.userInfo.id ? `&userId=${this.userInfo.id}` : ''
+        uni.navigateTo({
+          url: `/pages/follow-list/follow-list?type=following&title=${title}${userId}`
+        })
+      },
 
-			/**
-			 * 加载用户数据
-			 */
-			async loadUserData() {
-				if (!this.isLoggedIn) return
+      viewFollowers() {
+        const title = encodeURIComponent('粉丝列表')
+        const userId = this.userInfo.id ? `&userId=${this.userInfo.id}` : ''
+        uni.navigateTo({
+          url: `/pages/follow-list/follow-list?type=followers&title=${title}${userId}`
+        })
+      },
 
-				try {
-					this.isLoading = true
+      viewMyPosts() {
+        uni.navigateTo({
+          url: '/pages/my-posts/my-posts'
+        })
+      },
 
-					// 尝试获取用户详细信息，如果失败则使用本地存储的基本信息
-					try {
-						const userResponse = await userApi.getMyProfile()
-						if (userResponse.code === 200) {
-							this.userInfo = {
-								...this.userInfo,
-								...userResponse.data
-							}
-						}
-					} catch (apiError) {
-						console.warn('API调用失败，使用本地用户信息:', apiError)
-						// 如果API调用失败，继续使用已有的用户信息（来自getUserDisplayInfo）
-					}
+      viewCollections() {
+        uni.navigateTo({
+          url: '/pages/collect-list/collect-list'
+        })
+      },
 
-					// 获取用户统计数据
-					await this.loadUserStats()
+      goToVerification() {
+        uni.navigateTo({
+          url: '/pages/verification/verification'
+        })
+      },
 
-				} catch (error) {
-					console.error('加载用户数据失败:', error)
-					// 不显示错误提示，以免影响用户体验
-					// 继续使用现有的用户信息
-				} finally {
-					this.isLoading = false
-					this.isRefreshing = false
-				}
-			},
+      goToAdminPage() {
+        uni.navigateTo({
+          url: '/pages/admin/admin-main/admin-main'
+        })
+      },
 
-			/**
-			 * 加载用户统计数据
-			 * 模拟实现，实际应该调用专门的统计API
-			 */
-			async loadUserStats() {
-				try {
-					// 模拟统计数据
-					this.userStats = {
-						postsCount: Math.floor(Math.random() * 50) + 5,
-						followingCount: Math.floor(Math.random() * 100) + 10,
-						followersCount: Math.floor(Math.random() * 200) + 20,
-						likesCount: Math.floor(Math.random() * 500) + 50
-					}
-				} catch (error) {
-					console.error('加载统计数据失败:', error)
-				}
-			},
-
-			/**
-			 * 刷新用户数据
-			 */
-			refreshUserData() {
-				this.isRefreshing = true
-				this.loadUserData()
-			},
-
-			/**
-			 * 跳转到登录页面（保留兼容性）
-			 */
-			goToLogin() {
-				this.triggerLogin()
-			},
-
-			/**
-			 * 跳转到注册页面
-			 */
-			goToRegister() {
-				uni.navigateTo({
-					url: '/pages/register/register'
-				})
-			},
-
-			/**
-			 * 预览头像
-			 */
-			previewAvatar() {
-				if (this.userInfo.avatar) {
-					uni.previewImage({
-						urls: [this.userInfo.avatar],
-						current: 0
-					})
-				}
-			},
-
-			/**
-			 * 编辑个人资料
-			 */
-			editProfile() {
-				// TODO: 实现个人资料编辑页面
-				uni.showToast({
-					title: '个人资料编辑页面开发中',
-					icon: 'none'
-				})
-			},
-
-			/**
-			 * 查看我的帖子
-			 */
-			viewMyPosts() {
-				// TODO: 实现我的帖子页面
-				uni.showToast({
-					title: '我的帖子页面开发中',
-					icon: 'none'
-				})
-			},
-
-			/**
-			 * 查看关注列表
-			 */
-			viewFollowing() {
-				// TODO: 实现关注列表页面
-				uni.showToast({
-					title: '关注列表页面开发中',
-					icon: 'none'
-				})
-			},
-
-			/**
-			 * 查看粉丝列表
-			 */
-			viewFollowers() {
-				// TODO: 实现粉丝列表页面
-				uni.showToast({
-					title: '粉丝列表页面开发中',
-					icon: 'none'
-				})
-			},
-
-			/**
-			 * 查看获赞记录
-			 */
-			viewLikes() {
-				// TODO: 实现获赞记录页面
-				uni.showToast({
-					title: '获赞记录页面开发中',
-					icon: 'none'
-				})
-			},
-
-			/**
-			 * 跳转到身份认证页面
-			 */
-			goToVerification() {
-				// TODO: 实现身份认证页面
-				uni.showToast({
-					title: '身份认证页面开发中',
-					icon: 'none'
-				})
-			},
-
-			/**
-			 * 查看收藏
-			 */
-			viewCollections() {
-				// TODO: 实现收藏列表页面
-				uni.showToast({
-					title: '收藏列表页面开发中',
-					icon: 'none'
-				})
-			},
+      openFeedback() {
+        this.verifyLoginAndExecute(0, () => {
+          uni.navigateTo({
+            url: '/pages/feedback/feedback'
+          })
+        })
+      },
 
 
-			/**
-			 * 账号设置
-			 */
-			accountSettings() {
-				// TODO: 实现账号设置页面
-				uni.showToast({
-					title: '账号设置页面开发中',
-					icon: 'none'
-				})
-			},
+      aboutApp() {
+        uni.navigateTo({
+          url: '/pages/about/about'
+        })
+      },
 
+      confirmLogout() {
+        uni.showModal({
+          title: '确认退出',
+          content: '确认要退出登录吗?',
+          success: (res) => {
+            if (res.confirm) {
+              this.doLogout()
+            }
+          }
+        })
+      },
 
-			/**
-			 * 通知设置
-			 */
-			notificationSettings() {
-				// TODO: 实现通知设置页面
-				uni.showToast({
-					title: '通知设置页面开发中',
-					icon: 'none'
-				})
-			},
+      doLogout() {
+        try {
+          handleLogout()
+          this.isLoggedIn = false
+          this.resetUserState()
+          uni.switchTab({
+            url: '/pages/tabbar/tabbar-1/tabbar-1'
+          })
+        } catch (error) {
+          console.error('退出登录失败:', error)
+          uni.showToast({
+            title: '退出失败',
+            icon: 'none'
+          })
+        }
+      },
 
-			/**
-			 * 帮助中心
-			 */
-			helpCenter() {
-				uni.navigateTo({
-					url: '/pages/help-center/help-center'
-				})
-			},
+      async loadUserData({ showSkeleton = false } = {}) {
+        if (showSkeleton) {
+          this.isLoading = true
+        }
+        try {
+          this.isLoggedIn = isLoggedIn()
+          if (!this.isLoggedIn) {
+            this.resetUserState()
+            return
+          }
 
-			/**
-			 * 关于应用
-			 */
-			aboutApp() {
-				uni.navigateTo({
-					url: '/pages/about/about'
-				})
-			},
+          const userId = getUserId()
+          const [profile, stats] = await Promise.all([
+            userApi.getMyProfile().catch((error) => {
+              console.error('获取用户信息失败:', error)
+              return null
+            }),
+            userId ? userApi.getUserStats(userId).catch((error) => {
+              console.error('获取用户统计失败:', error)
+              return null
+            }) : Promise.resolve(null)
+          ])
 
-			/**
-			 * 确认退出登录
-			 */
-			confirmLogout() {
-				uni.showModal({
-					title: '确认退出',
-					content: '确定要退出登录吗？',
-					success: (res) => {
-						if (res.confirm) {
-							this.doLogout()
-						}
-					}
-				})
-			},
+          const storedAuthInfo = getAuthInfo()
+          const fallbackInfo = {
+            ...DEFAULT_USER_INFO,
+            id: storedAuthInfo?.id ?? storedAuthInfo?.userId ?? null,
+            username: storedAuthInfo?.username ?? DEFAULT_USER_INFO.username,
+            nickname: storedAuthInfo?.nickname ?? storedAuthInfo?.username ?? DEFAULT_USER_INFO.nickname,
+            avatar: storedAuthInfo?.avatar ?? DEFAULT_USER_INFO.avatar,
+            bio: storedAuthInfo?.bio ?? DEFAULT_USER_INFO.bio,
+            role: storedAuthInfo?.role ?? DEFAULT_USER_INFO.role,
+            backgroundImage: storedAuthInfo?.backgroundImage ?? DEFAULT_USER_INFO.backgroundImage,
+            createdAt: storedAuthInfo?.createdAt ?? DEFAULT_USER_INFO.createdAt
+          }
 
-			/**
-			 * 执行退出登录
-			 */
-			doLogout() {
-				try {
-					// 调用认证工具的退出方法
-					handleLogout()
+          const displayInfo = profile ? { ...fallbackInfo, ...profile } : fallbackInfo
+          this.userInfo = displayInfo
+          if (!this.userInfo.id && userId) {
+            this.userInfo.id = userId
+          }
 
-					// 重置页面状态
-					this.isLoggedIn = false
-					this.userInfo = {
-						id: null,
-						username: '',
-						nickname: '',
-						avatar: '',
-						bio: '',
-						role: 0,
-						backgroundImage: '',
-						createdAt: ''
-					}
-					this.userStats = {
-						postsCount: 0,
-						followingCount: 0,
-						followersCount: 0,
-						likesCount: 0
-					}
+          const statsSources = []
+          if (storedAuthInfo) {
+            statsSources.push({
+              postsCount: storedAuthInfo.postsCount ?? storedAuthInfo.postCount ?? 0,
+              followingCount: storedAuthInfo.followingCount ?? 0,
+              followersCount: storedAuthInfo.followersCount ?? 0,
+              likesCount: storedAuthInfo.likesCount ?? storedAuthInfo.totalLikes ?? 0
+            })
+          }
+          if (profile) {
+            statsSources.push({
+              postsCount: profile.postsCount ?? profile.postCount ?? 0,
+              followingCount: profile.followingCount ?? 0,
+              followersCount: profile.followersCount ?? 0,
+              likesCount: profile.likesCount ?? profile.totalLikes ?? 0
+            })
+          }
+          if (stats) {
+            statsSources.push(stats)
+          }
 
-					// 跳转到首页
-					uni.switchTab({
-						url: '/pages/tabbar/tabbar-1/tabbar-1'
-					})
-				} catch (error) {
-					console.error('退出登录失败:', error)
-					uni.showToast({
-						title: '退出失败',
-						icon: 'none'
-					})
-				}
-			},
+          let mergedStats = { ...DEFAULT_USER_STATS }
+          for (const source of statsSources) {
+            if (!source) {
+              continue
+            }
+            mergedStats = {
+              ...mergedStats,
+              postsCount: source.postsCount ?? source.postCount ?? mergedStats.postsCount,
+              followingCount: source.followingCount ?? mergedStats.followingCount,
+              followersCount: source.followersCount ?? mergedStats.followersCount,
+              likesCount: source.likesCount ?? source.totalLikes ?? mergedStats.likesCount
+            }
+          }
 
-			/**
-			 * 格式化加入时间
-			 * @param {string} timestamp - 时间戳
-			 * @returns {string} 格式化后的时间
-			 */
-			formatJoinDate(timestamp) {
-				if (!timestamp) return ''
-				const date = new Date(timestamp)
-				const year = date.getFullYear()
-				const month = date.getMonth() + 1
-				return `${year}年${month}月`
-			},
+          this.userStats = mergedStats
 
-			/**
-			 * 获取用户角色样式类
-			 * @param {number} role - 用户角色
-			 * @returns {string} CSS类名
-			 */
-			getRoleClass(role) {
-				switch(role) {
-					case USER_ROLES.ADMIN: return 'role-admin'
-					case USER_ROLES.VERIFIED: return 'role-verified'
-					case USER_ROLES.TRIAL: return 'role-trial'
-					default: return 'role-guest'
-				}
-			},
+        } catch (error) {
+          console.error('加载用户数据失败:', error)
+          uni.showToast({
+            title: '加载失败',
+            icon: 'none'
+          })
+        } finally {
+          if (showSkeleton) {
+            this.isLoading = false
+          }
+          this.isRefreshing = false
+        }
+      },
 
-			/**
-			 * 获取用户角色文本
-			 * @param {number} role - 用户角色
-			 * @returns {string} 角色文本
-			 */
-			getRoleText(role) {
-				switch(role) {
-					case USER_ROLES.ADMIN: return '管理员'
-					case USER_ROLES.VERIFIED: return '认证用户'
-					case USER_ROLES.TRIAL: return '体验用户'
-					default: return '游客'
-				}
-			}
-		}
-	}
+      refreshUserData() {
+        if (this.isRefreshing) {
+          return
+        }
+        this.isRefreshing = true
+        this.loadUserData()
+      },
+
+      formatJoinDate(timestamp) {
+        if (!timestamp) {
+          return ''
+        }
+        const date = new Date(timestamp)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        return `${year}年${month}月`
+      },
+
+      getRoleClass(role) {
+        switch (role) {
+          case USER_ROLES.ADMIN:
+            return 'role-admin'
+          case USER_ROLES.VERIFIED:
+            return 'role-verified'
+          case USER_ROLES.TRIAL:
+            return 'role-trial'
+          default:
+            return 'role-guest'
+        }
+      },
+
+      getRoleText(role) {
+        switch (role) {
+          case USER_ROLES.ADMIN:
+            return '管理员'
+          case USER_ROLES.VERIFIED:
+            return '认证用户'
+          case USER_ROLES.TRIAL:
+            return '体验用户'
+          default:
+            return '访客'
+        }
+      }
+    }
+  }
 </script>
 
 <style scoped>
@@ -952,3 +850,22 @@
 		color: #999;
 	}
 </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

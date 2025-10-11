@@ -266,12 +266,12 @@ public class TagService {
 
         // 查询最近使用时间（最后一次有帖子使用该标签的时间）
         QueryWrapper lastUsedQuery = QueryWrapper.create()
-                .select("MAX(p.created_at)")
-                .from("post_tags pt")
-                .leftJoin("posts p").on("pt.post_id = p.id")
-                .where("pt.tag_id = ?", tag.getId())
-                .and("pt.deleted = 0")
-                .and("p.deleted = 0");
+                .select("MAX(posts.created_at)")
+                .from("post_tags")
+                .leftJoin("posts").on("post_tags.post_id = posts.id")
+                .where("post_tags.tag_id = ?", tag.getId())
+                .and("post_tags.deleted = 0")
+                .and("posts.deleted = 0");
 
         // 这里简化处理，实际项目中可能需要更复杂的查询
         // 暂时使用标签创建时间作为最近使用时间
@@ -279,14 +279,14 @@ public class TagService {
 
         // 查询使用该标签的最新帖子标题示例
         QueryWrapper latestPostQuery = QueryWrapper.create()
-                .select("p.title")
-                .from("post_tags pt")
-                .leftJoin("posts p").on("pt.post_id = p.id")
-                .where("pt.tag_id = ?", tag.getId())
-                .and("pt.deleted = 0")
-                .and("p.deleted = 0")
-                .and("p.status = 0")
-                .orderBy("p.created_at DESC")
+                .select("posts.title")
+                .from("post_tags")
+                .leftJoin("posts").on("post_tags.post_id = posts.id")
+                .where("post_tags.tag_id = ?", tag.getId())
+                .and("post_tags.deleted = 0")
+                .and("posts.deleted = 0")
+                .and("posts.status = 0")
+                .orderBy("posts.created_at DESC")
                 .limit(1);
 
         // 简化处理：如果有帖子使用该标签，设置示例标题
@@ -310,12 +310,12 @@ public class TagService {
         // 统计使用该标签的有效帖子数量
         QueryWrapper countQuery = QueryWrapper.create()
                 .select("COUNT(*)")
-                .from("post_tags pt")
-                .leftJoin("posts p").on("pt.post_id = p.id")
-                .where("pt.tag_id = ?", tagId)
-                .and("pt.deleted = 0")
-                .and("p.deleted = 0")
-                .and("p.status = 0");
+                .from("post_tags")
+                .leftJoin("posts").on("post_tags.post_id = posts.id")
+                .where("post_tags.tag_id = ?", tagId)
+                .and("post_tags.deleted = 0")
+                .and("posts.deleted = 0")
+                .and("posts.status = 0");
 
         long count = postTagMapper.selectCountByQuery(countQuery);
 

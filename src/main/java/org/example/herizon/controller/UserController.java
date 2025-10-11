@@ -7,6 +7,8 @@ import org.example.herizon.common.Result;
 import org.example.herizon.dto.UserRegistrationRequest;
 import org.example.herizon.dto.UserLoginRequest;
 import org.example.herizon.dto.UserProfileDTO;
+import org.example.herizon.dto.UserStatsDTO;
+import org.example.herizon.dto.UpdateProfileRequest;
 import org.example.herizon.entity.User;
 import org.example.herizon.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,13 +76,15 @@ public class UserController {
      */
     @Operation(summary = "获取用户资料", description = "查询用户的公开资料信息")
     @GetMapping("/{userId}")
-    public Result<UserProfileDTO> getUserProfile(@Parameter(description = "用户ID") @PathVariable Long userId) {
-        UserProfileDTO profile = userService.getUserProfile(userId);
+    public Result<UserProfileDTO> getUserProfile(@Parameter(description = "�û�ID") @PathVariable Long userId,
+                                                    @RequestHeader(value = "userId", required = false) Long currentUserId) {
+        UserProfileDTO profile = userService.getUserProfile(userId, currentUserId);
         if (profile == null) {
-            return Result.error(404, "用户不存在");
+            return Result.error(404, "�û�������");
         }
         return Result.success(profile);
     }
+
 
     /**
      * 获取当前用户资料
@@ -111,7 +115,7 @@ public class UserController {
     @PutMapping("/me")
     public Result<UserProfileDTO> updateProfile(
             @Parameter(description = "当前用户ID") @RequestHeader("userId") Long currentUserId,
-            @Parameter(description = "更新请求") @RequestBody UserRegistrationRequest request) {
+            @Parameter(description = "更新请求") @RequestBody UpdateProfileRequest request) {
         UserProfileDTO profile = userService.updateUserProfile(currentUserId, request);
         return Result.success(profile);
     }
@@ -162,6 +166,29 @@ public class UserController {
     public Result<Boolean> checkEmail(@Parameter(description = "待检查的邮箱") @RequestParam String email) {
         boolean available = userService.isEmailAvailable(email);
         return Result.success(available);
+    }
+
+    /**
+     * 获取用户统计数据
+     * <p>
+     * 查询用户的发帖数、关注数、粉丝数、获赞数、被收藏数等统计信息
+     *
+     * @param userId 用户ID
+     * @return 用户统计数据
+     */
+    @Operation(summary = "获取用户统计数据", description = "查询用户的发帖、关注、粉丝、获赞等统计信息")
+    @GetMapping("/{userId}/stats")
+    public Result<UserStatsDTO> getUserStats(@Parameter(description = "用户ID") @PathVariable Long userId) {
+        if (userId == null) {
+            return Result.error("用户ID不能为空");
+        }
+
+        try {
+            UserStatsDTO stats = userService.getUserStats(userId);
+            return Result.success(stats);
+        } catch (RuntimeException e) {
+            return Result.error(404, e.getMessage());
+        }
     }
 
 }

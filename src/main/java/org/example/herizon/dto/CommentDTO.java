@@ -39,9 +39,19 @@ public class CommentDTO {
     private Long userId;
 
     /**
-     * 评论者用户名
+     * 评论者用户名（唯一标识，内部使用）
      */
     private String username;
+
+    /**
+     * 评论者昵称（对外显示用）
+     */
+    private String nickname;
+
+    /**
+     * 评论者头像URL
+     */
+    private String userAvatar;
 
     /**
      * 父评论ID，顶级评论为null
@@ -49,9 +59,14 @@ public class CommentDTO {
     private Long parentId;
 
     /**
-     * 父评论作者用户名（用于显示"回复@xxx"）
+     * 父评论作者用户名（用于显示"回复@xxx"，内部使用）
      */
     private String parentUsername;
+
+    /**
+     * 父评论作者昵称（用于显示"回复@xxx"，对外显示）
+     */
+    private String parentNickname;
 
     /**
      * 评论内容
@@ -104,6 +119,16 @@ public class CommentDTO {
      * 用户可以删除自己的评论，管理员可以删除任何评论
      */
     private Boolean canDelete;
+
+    /**
+     * 当前用户是否已点赞此评论
+     */
+    private Boolean isLiked;
+
+    /**
+     * 评论点赞数
+     */
+    private Integer likeCount;
 
     /**
      * 计算评论的显示内容

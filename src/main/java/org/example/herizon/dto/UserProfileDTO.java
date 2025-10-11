@@ -22,9 +22,19 @@ public class UserProfileDTO {
     private Long id;
 
     /**
-     * 用户名
+     * 用户名（唯一标识，内部使用）
      */
     private String username;
+
+    /**
+     * 用户昵称（对外显示用）
+     */
+    private String nickname;
+
+    /**
+     * 用户头像URL
+     */
+    private String avatar;
 
     /**
      * 邮箱地址（仅对当前用户显示）
@@ -65,6 +75,31 @@ public class UserProfileDTO {
      * 用户获得的总点赞数
      */
     private Integer totalLikes;
+
+    /**
+     * 用户收藏数量
+     */
+    private Integer collectCount;
+
+    /**
+     * ��˿����
+     */
+    private Long followersCount;
+
+    /**
+     * ��ע����
+     */
+    private Long followingCount;
+
+    /**
+     * ��ǰ�û��Ƿ��ѹ�ע
+     */
+    private Boolean isFollowing;
+
+    /**
+     * �Ƿ�Ϊ�����ע
+     */
+    private Boolean isMutualFollow;
 
     /**
      * 会话token（仅登录时返回）

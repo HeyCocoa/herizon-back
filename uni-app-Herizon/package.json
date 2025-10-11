@@ -8,7 +8,7 @@
     "tabbar",
     "uni-tabbar",
     "选项卡"
-],
+  ],
   "dcloudext": {
     "sale": {
       "regular": {
@@ -94,5 +94,14 @@
     "HBuilderX": "^3.1.0",
     "uni-app": "^4.03",
     "uni-app-x": ""
+  },
+  "scripts": {
+    "test:e2e": "jest --config tests/jest.config.js",
+    "test:e2e:watch": "jest --config tests/jest.config.js --watch",
+    "test:single": "jest --config tests/jest.config.js --testNamePattern"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "miniprogram-automator": "^0.12.1"
   }
 }

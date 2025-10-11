@@ -63,27 +63,27 @@
 					</button>
 
 					<!-- 分隔符 -->
-					<view class="divider" v-if="supportWechatLogin">
-						<view class="divider-line"></view>
-						<text class="divider-text">或</text>
-						<view class="divider-line"></view>
-					</view>
+<!--					<view class="divider" v-if="supportWechatLogin">-->
+<!--						<view class="divider-line"></view>-->
+<!--						<text class="divider-text">或</text>-->
+<!--						<view class="divider-line"></view>-->
+<!--					</view>-->
 
-					<!-- 微信登录按钮 -->
-					<button
-						class="wechat-login-btn"
-						v-if="supportWechatLogin"
-						:disabled="isWechatLogging"
-						@click="handleWechatLogin"
-					>
-						<text class="wechat-icon">💬</text>
-						<text class="wechat-text" v-if="!isWechatLogging">微信登录</text>
-						<text class="wechat-text" v-else>登录中...</text>
-					</button>
+<!--					&lt;!&ndash; 微信登录按钮 &ndash;&gt;-->
+<!--					<button-->
+<!--						class="wechat-login-btn"-->
+<!--						v-if="supportWechatLogin"-->
+<!--						:disabled="isWechatLogging"-->
+<!--						@click="handleWechatLogin"-->
+<!--					>-->
+<!--						<text class="wechat-icon">💬</text>-->
+<!--						<text class="wechat-text" v-if="!isWechatLogging">微信登录</text>-->
+<!--						<text class="wechat-text" v-else>登录中...</text>-->
+<!--					</button>-->
 
 					<!-- 快速操作 -->
 					<view class="quick-actions">
-						<text class="action-link" @click="goToRegister">还没有账号？立即注册</text>
+						<text class="action-link" @click="goToRegister">还没有账号?立即注册</text>
 					</view>
 				</view>
 			</view>
@@ -100,7 +100,7 @@
 /**
  * 登录页面
  *
- * 功能特性：
+ * 功能特性:
  * - 用户名/邮箱登录
  * - 密码可见性切换
  * - 表单验证
@@ -158,10 +158,10 @@ export default {
 			// 检查是否有上一页
 			const pages = getCurrentPages()
 			if (pages.length > 1) {
-				// 如果有上一页，则返回
+				// 如果有上一页,则返回
 				uni.navigateBack()
 			} else {
-				// 如果没有上一页（比如直接通过链接访问），则跳转到首页
+				// 如果没有上一页(比如直接通过链接访问),则跳转到首页
 				uni.switchTab({
 					url: '/pages/tabbar/tabbar-1/tabbar-1'
 				})
@@ -226,10 +226,10 @@ export default {
 				// 处理登录成功
 				handleLoginSuccess(result)
 
-				// 延迟跳转，让用户看到成功提示
+				// 延迟跳转,让用户看到成功提示
 				setTimeout(() => {
 					if (this.redirectUrl.startsWith('/pages/tabbar/')) {
-						// 如果是tabbar页面，使用switchTab
+						// 如果是tabbar页面,使用switchTab
 						uni.switchTab({
 							url: this.redirectUrl
 						})
@@ -245,14 +245,14 @@ export default {
 				console.error('登录失败:', error)
 
 				// 根据错误类型显示不同提示
-				let errorMessage = '登录失败，请重试'
+				let errorMessage = '登录失败,请重试'
 				if (error.message) {
 					if (error.message.includes('用户不存在')) {
-						errorMessage = '用户不存在，请检查用户名'
+						errorMessage = '用户不存在,请检查用户名'
 					} else if (error.message.includes('密码错误')) {
-						errorMessage = '密码错误，请重新输入'
+						errorMessage = '密码错误,请重新输入'
 					} else if (error.message.includes('账号被禁用')) {
-						errorMessage = '账号已被禁用，请联系管理员'
+						errorMessage = '账号已被禁用,请联系管理员'
 					}
 				}
 
@@ -291,13 +291,10 @@ export default {
 				await handleWechatLoginSuccess(
 					wechatData,
 					(userData) => {
-						// 登录成功回调
-						console.log('微信登录成功:', userData)
-
-						// 延迟跳转，让用户看到成功提示
+						// 登录成功回调,延迟跳转让用户看到成功提示
 						setTimeout(() => {
 							if (this.redirectUrl.startsWith('/pages/tabbar/')) {
-								// 如果是tabbar页面，使用switchTab
+								// 如果是tabbar页面,使用switchTab
 								uni.switchTab({
 									url: this.redirectUrl
 								})
@@ -324,7 +321,7 @@ export default {
 					if (error.message.includes('用户取消')) {
 						errorMessage = '用户取消登录'
 					} else if (error.message.includes('网络')) {
-						errorMessage = '网络连接失败，请重试'
+						errorMessage = '网络连接失败,请重试'
 					} else if (error.message.includes('不支持')) {
 						errorMessage = '当前环境不支持微信登录'
 					}

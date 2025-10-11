@@ -1,10 +1,4 @@
 # 开发环境配置
-# 仅用于本地开发，请勿提交真实的AppSecret到版本库
-
-wechat:
-  miniprogram:
-    # 开发环境微信AppSecret（请替换为真实值）
-    app-secret: "请填入真实的微信AppSecret"
 
 # 开发环境日志配置
 logging:

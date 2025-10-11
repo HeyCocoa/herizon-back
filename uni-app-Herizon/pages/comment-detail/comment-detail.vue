@@ -1,6 +1,6 @@
 <!-- 评论详情页 - 嵌套评论展示和多级回复 -->
 <template>
-	<!-- 主容器：评论详情展示 -->
+	<!-- 主容器:评论详情展示 -->
 	<view class="comment-detail-container">
 		<!-- 加载状态 -->
 		<view v-if="loading" class="loading-container">
@@ -139,7 +139,7 @@
 <script>
 // 引入API和工具函数
 import { commentApi, actionApi } from '@/utils/api.js'
-import { getAuthInfo } from '@/utils/auth.js'
+import { getAuthInfo, verifyAndExecute, USER_ROLES } from '@/utils/auth.js'
 
 export default {
 	data() {
@@ -158,6 +158,7 @@ export default {
 			currentPage: 1,
 			pageSize: 20,
 			hasMoreReplies: true,
+			totalReplies: 0,
 
 			// 回复输入
 			showCommentBox: false,
@@ -192,16 +193,13 @@ export default {
 		 */
 		async loadCommentDetail() {
 			try {
-				const response = await commentApi.getCommentDetail(this.commentId)
+				// request.js已解包Result对象
+				const result = await commentApi.getCommentDetail(this.commentId)
 
-				if (response.code === 200) {
-					this.mainComment = response.data
-					uni.setNavigationBarTitle({
-						title: '评论详情'
-					})
-				} else {
-					throw new Error(response.message || '获取评论详情失败')
-				}
+				this.mainComment = result
+				uni.setNavigationBarTitle({
+					title: '评论详情'
+				})
 			} catch (error) {
 				console.error('加载评论详情失败:', error)
 				uni.showToast({
@@ -228,22 +226,27 @@ export default {
 					this.hasMoreReplies = true
 				}
 
-				const response = await commentApi.getReplies(this.commentId)
+				// request.js已解包Result对象
+				const pageResult = await commentApi.getReplies(this.commentId, {
+					current: this.currentPage,
+					size: this.pageSize
+				})
+				const newReplies = (pageResult && pageResult.records) || []
 
-				if (response.code === 200) {
-					const newReplies = response.data || []
-
-					if (refresh) {
-						this.replyList = newReplies
-					} else {
-						this.replyList = [...this.replyList, ...newReplies]
-					}
-
-					// 这里简化处理，实际应该根据分页信息判断
-					this.hasMoreReplies = newReplies.length >= this.pageSize
+				if (refresh) {
+					this.replyList = newReplies
 				} else {
-					throw new Error(response.message || '获取回复失败')
+					this.replyList = [...this.replyList, ...newReplies]
 				}
+
+				// 这里简化处理,实际应该根据分页信息判断
+				const total = pageResult && typeof pageResult.total === 'number'
+					? pageResult.total
+					: null
+				this.totalReplies = total !== null ? total : this.replyList.length
+				this.hasMoreReplies = total !== null
+					? this.replyList.length < total
+					: newReplies.length >= this.pageSize
 			} catch (error) {
 				console.error('加载回复失败:', error)
 				uni.showToast({
@@ -286,21 +289,18 @@ export default {
 
 		/**
 		 * 切换点赞状态
+		 * 需要正式用户身份(体验用户会弹出认证提示)
 		 * @param {number} commentId - 评论ID
 		 */
 		async toggleLike(commentId) {
-			if (!this.currentUser?.userId) {
-				uni.showToast({ title: '请先登录', icon: 'error' })
-				return
-			}
+			verifyAndExecute(USER_ROLES.VERIFIED, async () => {
+				try {
+					// request.js已解包Result对象
+					await actionApi.toggleLike({
+						targetId: commentId,
+						targetType: 'comment'
+					})
 
-			try {
-				const response = await actionApi.toggleLike({
-					targetId: commentId,
-					targetType: 'comment'
-				})
-
-				if (response.code === 200) {
 					// 更新对应评论的点赞状态
 					if (this.mainComment && this.mainComment.id === commentId) {
 						this.mainComment.isLiked = !this.mainComment.isLiked
@@ -312,16 +312,14 @@ export default {
 							reply.likeCount += reply.isLiked ? 1 : -1
 						}
 					}
-				} else {
-					throw new Error(response.message || '操作失败')
+				} catch (error) {
+					console.error('点赞失败:', error)
+					uni.showToast({
+						title: error.message || '操作失败',
+						icon: 'error'
+					})
 				}
-			} catch (error) {
-				console.error('点赞失败:', error)
-				uni.showToast({
-					title: error.message || '操作失败',
-					icon: 'error'
-				})
-			}
+			})
 		},
 
 		/**
@@ -355,6 +353,7 @@ export default {
 
 		/**
 		 * 提交回复
+		 * 需要正式用户身份(体验用户会弹出认证提示)
 		 */
 		async submitReply() {
 			if (!this.commentContent.trim()) {
@@ -362,20 +361,21 @@ export default {
 				return
 			}
 
-			try {
-				const replyData = {
-					parentId: this.commentId,
-					content: this.commentContent.trim()
-				}
+			verifyAndExecute(USER_ROLES.VERIFIED, async () => {
+				try {
+					const replyData = {
+						parentId: this.commentId,
+						content: this.commentContent.trim()
+					}
 
-				// 如果是回复特定用户，添加回复目标
-				if (this.replyTarget && this.replyTarget.id !== this.commentId) {
-					replyData.replyToUserId = this.replyTarget.userId
-				}
+					// 如果是回复特定用户,添加回复目标
+					if (this.replyTarget && this.replyTarget.id !== this.commentId) {
+						replyData.replyToUserId = this.replyTarget.userId
+					}
 
-				const response = await commentApi.createComment(replyData)
+					// request.js已解包Result对象
+					await commentApi.createComment(replyData)
 
-				if (response.code === 200) {
 					uni.showToast({ title: '回复成功', icon: 'success' })
 
 					// 清空输入框并隐藏
@@ -385,16 +385,14 @@ export default {
 
 					// 刷新回复列表
 					this.loadReplies(true)
-				} else {
-					throw new Error(response.message || '回复失败')
+				} catch (error) {
+					console.error('发表回复失败:', error)
+					uni.showToast({
+						title: error.message || '回复失败',
+						icon: 'error'
+					})
 				}
-			} catch (error) {
-				console.error('发表回复失败:', error)
-				uni.showToast({
-					title: error.message || '回复失败',
-					icon: 'error'
-				})
-			}
+			})
 		},
 
 		/**
@@ -405,27 +403,24 @@ export default {
 			try {
 				await uni.showModal({
 					title: '确认删除',
-					content: '确定要删除这条评论吗？',
+					content: '确定要删除这条评论吗?',
 					confirmText: '删除',
 					confirmColor: '#ff4757'
 				})
 
-				const response = await commentApi.deleteComment(commentId)
+				// request.js已解包Result对象
+				await commentApi.deleteComment(commentId)
 
-				if (response.code === 200) {
-					uni.showToast({ title: '删除成功', icon: 'success' })
+				uni.showToast({ title: '删除成功', icon: 'success' })
 
-					if (commentId === this.commentId) {
-						// 删除的是主评论，返回上一页
-						setTimeout(() => {
-							uni.navigateBack()
-						}, 1500)
-					} else {
-						// 删除的是回复，从列表中移除
-						this.replyList = this.replyList.filter(r => r.id !== commentId)
-					}
+				if (commentId === this.commentId) {
+					// 删除的是主评论,返回上一页
+					setTimeout(() => {
+						uni.navigateBack()
+					}, 1500)
 				} else {
-					throw new Error(response.message || '删除失败')
+					// 删除的是回复,从列表中移除
+					this.replyList = this.replyList.filter(r => r.id !== commentId)
 				}
 			} catch (error) {
 				console.error('删除评论失败:', error)

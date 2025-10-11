@@ -28,9 +28,24 @@ public class PostDTO{
     private Long userId;
 
     /**
-     * 发帖用户名
+     * 发帖用户名（唯一标识，内部使用）
      */
     private String username;
+
+    /**
+     * 发帖用户昵称（对外显示用）
+     */
+    private String nickname;
+
+    /**
+     * 发帖用户头像URL
+     */
+    private String userAvatar;
+
+    /**
+     * 发帖用户角色：0=体验用户, 1=正式用户, 2=管理员
+     */
+    private Integer userRole;
 
     /**
      * 帖子标题
@@ -80,7 +95,17 @@ public class PostDTO{
     /**
      * 帖子标签列表
      */
-    private List<String> tags;
+    private List<TagDTO> tags;
+
+    /**
+     * 图片URL列表(最多3张)
+     */
+    private List<String> imageUrls;
+
+    /**
+     * 评论数
+     */
+    private Integer commentCount;
 
     /**
      * 当前用户是否已点赞
@@ -91,4 +116,21 @@ public class PostDTO{
      * 当前用户是否已收藏
      */
     private Boolean isCollected;
+
+    /**
+     * 投票选项列表（仅当postType=1时有值）
+     * 包含选项文本和投票数统计
+     */
+    private List<PollOptionDTO> pollOptions;
+
+    /**
+     * 当前用户的投票选择（仅当postType=1时有值）
+     * 存储用户选择的投票选项ID，未投票时为null
+     */
+    private Long myVote;
+    /**
+     * ��ǰ�û��Ƿ��ѹ�ע����
+     */
+    private Boolean isAuthorFollowed;
+
 }

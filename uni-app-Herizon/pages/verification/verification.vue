@@ -18,7 +18,7 @@
 			<view class="welcome-section">
 				<view class="welcome-icon">👩‍💼</view>
 				<text class="welcome-title">欢迎加入Herizon</text>
-				<text class="welcome-desc">为了确保社区的专业性和安全性，请完成身份认证，成为正式用户后可享受完整功能。</text>
+				<text class="welcome-desc">为了确保社区的专业性和安全性,请完成身份认证,成为正式用户后可享受完整功能。</text>
 			</view>
 
 			<!-- 问卷内容 -->
@@ -152,7 +152,7 @@
 
 					<!-- 使用目的 -->
 					<view class="question-item">
-						<text class="question-label">您希望在Herizon获得什么？（多选）</text>
+						<text class="question-label">您希望在Herizon获得什么?(多选)</text>
 						<view class="checkbox-group">
 							<view
 								class="checkbox-item"
@@ -169,7 +169,7 @@
 
 					<!-- 关注领域 */
 					<view class="question-item">
-						<text class="question-label">您最关注的领域？（多选）</text>
+						<text class="question-label">您最关注的领域?(多选)</text>
 						<view class="checkbox-group">
 							<view
 								class="checkbox-item"
@@ -186,7 +186,7 @@
 
 					<!-- 自我介绍 -->
 					<view class="question-item">
-						<text class="question-label">简单介绍一下自己（可选）</text>
+						<text class="question-label">简单介绍一下自己(可选)</text>
 						<textarea
 							class="question-textarea"
 							placeholder="请简单介绍一下您的职业背景、兴趣爱好或其他想要分享的内容..."
@@ -223,8 +223,8 @@
 					<text class="modal-title">提交确认</text>
 				</view>
 				<view class="modal-content">
-					<text class="modal-text">确定要提交身份认证信息吗？</text>
-					<text class="modal-hint">提交后将自动升级为正式用户，享受完整功能。</text>
+					<text class="modal-text">确定要提交身份认证信息吗?</text>
+					<text class="modal-hint">提交后需等待管理员审核,审核通过后即可升级为正式用户。</text>
 				</view>
 				<view class="modal-actions">
 					<button class="modal-btn cancel-btn" @click="hideSubmitModal">取消</button>
@@ -262,8 +262,8 @@
 					positionLevel: '',   // 职位级别
 					workYears: '',       // 工作年限
 					companySize: '',     // 公司规模
-					purposes: [],        // 使用目的（多选）
-					interests: [],       // 关注领域（多选）
+					purposes: [],        // 使用目的(多选)
+					interests: [],       // 关注领域(多选)
 					selfIntroduction: '', // 自我介绍
 					agreePrivacy: false  // 同意隐私协议
 				},
@@ -311,11 +311,11 @@
 				],
 
 				companySizeOptions: [
-					{ value: 'startup', label: '创业公司（<50人）' },
-					{ value: 'small', label: '小型公司（50-200人）' },
-					{ value: 'medium', label: '中型公司（200-1000人）' },
-					{ value: 'large', label: '大型公司（1000-5000人）' },
-					{ value: 'enterprise', label: '大型企业（5000人以上）' }
+					{ value: 'startup', label: '创业公司(<50人)' },
+					{ value: 'small', label: '小型公司(50-200人)' },
+					{ value: 'medium', label: '中型公司(200-1000人)' },
+					{ value: 'large', label: '大型公司(1000-5000人)' },
+					{ value: 'enterprise', label: '大型企业(5000人以上)' }
 				],
 
 				purposeOptions: [
@@ -394,7 +394,7 @@
 				if (currentRole >= USER_ROLES.VERIFIED) {
 					uni.showModal({
 						title: '已完成认证',
-						content: '您已经是正式用户，无需重复认证',
+						content: '您已经是正式用户,无需重复认证',
 						showCancel: false,
 						success: () => {
 							uni.navigateBack()
@@ -498,7 +498,7 @@
 				if (this.hasUnsavedData()) {
 					uni.showModal({
 						title: '确认退出',
-						content: '退出后填写的信息将不会保存，确定要退出吗？',
+						content: '退出后填写的信息将不会保存,确定要退出吗?',
 						success: (res) => {
 							if (res.confirm) {
 								uni.navigateBack()
@@ -595,43 +595,31 @@
 						}
 					}, 200)
 
-					// 调用身份认证API
-					const response = await userApi.applyVerification(this.formData)
+					// 调用身份认证API(发送JSON字符串到后端)
+					// request.js已解包Result对象
+					await userApi.applyVerification(this.formData)
 
 					clearInterval(progressInterval)
 					this.submitProgress = 100
 
-					if (response.code === 200) {
-						// 更新用户角色为正式用户
-						const currentUser = getUserDisplayInfo()
-						const updatedUser = {
-							...currentUser,
-							role: USER_ROLES.VERIFIED,
-							verificationData: this.formData
-						}
-						setUserInfo(updatedUser)
+					uni.showToast({
+						title: '提交成功!',
+						icon: 'success'
+					})
 
-						uni.showToast({
-							title: '认证成功！',
-							icon: 'success'
+					// 延迟跳转
+					setTimeout(() => {
+						uni.showModal({
+							title: '提交成功',
+							content: '您的身份认证申请已提交,管理员审核通过后即可升级为正式用户,享受完整功能。审核结果会通过系统通知您。',
+							showCancel: false,
+							success: () => {
+								uni.switchTab({
+									url: '/pages/tabbar/tabbar-1/tabbar-1'
+								})
+							}
 						})
-
-						// 延迟跳转
-						setTimeout(() => {
-							uni.showModal({
-								title: '恭喜您！',
-								content: '身份认证成功，您已成为正式用户，现在可以享受完整功能了！',
-								showCancel: false,
-								success: () => {
-									uni.switchTab({
-										url: '/pages/tabbar/tabbar-1/tabbar-1'
-									})
-								}
-							})
-						}, 1500)
-					} else {
-						throw new Error(response.message || '提交失败')
-					}
+					}, 1500)
 
 				} catch (error) {
 					console.error('提交认证失败:', error)
@@ -656,6 +644,7 @@
 		background-color: #f5f5f5;
 		display: flex;
 		flex-direction: column;
+		overflow: hidden; /* 防止内容溢出导致横向滚动 */
 	}
 
 	/* 顶部导航栏 */

@@ -66,22 +66,28 @@ export const userApi = {
 	checkEmail: (email) => http.get('/users/check-email', { email }),
 
 	/**
-	 * 微信登录（已迁移到authApi）
+	 * 微信登录(已迁移到authApi)
 	 * @deprecated 请使用 authApi.wechatLogin
 	 */
 	wechatLogin: (data) => {
-		// 解决循环引用问题：直接调用HTTP请求而非引用authApi
+		// 解决循环引用问题:直接调用HTTP请求而非引用authApi
 		return http.post('/auth/wechat-login', data)
 	},
 
 	/**
 	 * 绑定微信账号
 	 * @param {Object} data - 绑定数据
-	 * @param {string} data.code - 微信登录临时凭证（通过wx.login获取）
-	 * @param {string} data.nickname - 微信用户昵称（可选）
-	 * @param {string} data.avatar - 微信用户头像URL（可选）
+	 * @param {string} data.code - 微信登录临时凭证(通过wx.login获取)
+	 * @param {string} data.nickname - 微信用户昵称(可选)
+	 * @param {string} data.avatar - 微信用户头像URL(可选)
 	 */
-	bindWechat: (data) => http.post('/users/bind-wechat', data)
+	bindWechat: (data) => http.post('/users/bind-wechat', data),
+
+	/**
+	 * 获取用户统计数据
+	 * @param {number} userId - 用户ID
+	 */
+	getUserStats: (userId) => http.get(`/users/${userId}/stats`)
 }
 
 /**
@@ -89,7 +95,7 @@ export const userApi = {
  */
 export const postApi = {
 	/**
-	 * 首页帖子列表（系统变更后的简化版）
+	 * 首页帖子列表(系统变更后的简化版)
 	 * @param {Object} params - 查询参数
 	 * @param {number} params.current - 当前页码
 	 * @param {number} params.size - 每页数量
@@ -97,7 +103,7 @@ export const postApi = {
 	getHomePostList: (params) => http.get('/posts', params),
 
 	/**
-	 * 根据标签查询帖子列表（话题页面专用）
+	 * 根据标签查询帖子列表(话题页面专用)
 	 * @param {Object} params - 查询参数
 	 * @param {number} tagId - 标签ID
 	 * @param {number} params.current - 当前页码
@@ -106,7 +112,7 @@ export const postApi = {
 	getPostsByTag: (tagId, params) => http.get(`/posts/by-tag/${tagId}`, params),
 
 	/**
-	 * 分页查询帖子列表（已废弃，保留向后兼容）
+	 * 分页查询帖子列表(已废弃,保留向后兼容)
 	 * @deprecated 请使用 getHomePostList 或 getPostsByTag
 	 */
 	getPostList: (params) => http.get('/posts', params),
@@ -133,7 +139,52 @@ export const postApi = {
 	 * 增加帖子浏览量
 	 * @param {number} postId - 帖子ID
 	 */
-	addPostView: (postId) => http.post(`/posts/${postId}/view`)
+	addPostView: (postId) => http.post(`/posts/${postId}/view`),
+
+	/**
+	 * 在投票帖子中提交投票
+	 * @param {number} postId - 帖子ID
+	 * @param {number} optionId - 投票选项ID
+	 */
+	vote: (postId, optionId) => http.post(`/posts/${postId}/vote`, { optionId }),
+
+	/**
+	 * 查询用户帖子列表(我的帖子页面)
+	 * @param {number} userId - 用户ID
+	 * @param {Object} params - 查询参数
+	 * @param {number} params.current - 当前页码
+	 * @param {number} params.size - 每页数量
+	 */
+	getUserPosts: (userId, params) => http.get(`/posts/user/${userId}`, params),
+
+	/**
+	 * 删除帖子（作者或管理员）
+	 * @param {number} postId - 帖子ID
+	 */
+	deleteMyPost: (postId) => http.delete(`/posts/${postId}`),
+
+	/**
+	 * 统计指定标签下的帖子数量(实时查询)
+	 * @param {number} tagId - 标签ID
+	 * @returns {Promise<number>} 帖子数量
+	 */
+	getPostCountByTag: (tagId) => http.get(`/posts/by-tag/${tagId}/count`),
+
+	/**
+	 * 搜索帖子(模糊匹配)
+	 * <p>
+	 * 根据关键词搜索帖子,支持标题和内容的模糊匹配
+	 * 搜索结果按创建时间倒序排列(最新的在前)
+	 *
+	 * API路径:GET /api/posts/search
+	 *
+	 * @param {Object} params - 搜索参数
+	 * @param {string} params.keyword - 搜索关键词(必需)
+	 * @param {number} params.current - 当前页码,默认1
+	 * @param {number} params.size - 每页数量,默认10
+	 * @returns {Promise<PageResult<PostDTO>>} 分页的帖子列表
+	 */
+	searchPosts: (params) => http.get('/posts/search', params)
 }
 
 /**
@@ -172,7 +223,7 @@ export const tagApi = {
 	updateTag: (tagId, data) => http.put(`/tags/${tagId}`, data),
 
 	/**
-	 * 搜索标签（模糊匹配）
+	 * 搜索标签(模糊匹配)
 	 * @param {string} keyword - 搜索关键词
 	 */
 	searchTags: (keyword) => http.get('/tags/search', { keyword }),
@@ -184,7 +235,7 @@ export const tagApi = {
 	getHotTags: (limit = 10) => http.get('/tags/hot', { limit }),
 
 	/**
-	 * 删除标签（管理员）
+	 * 删除标签(管理员)
 	 * @param {number} tagId - 标签ID
 	 */
 	deleteTag: (tagId) => http.delete(`/tags/${tagId}`)
@@ -205,14 +256,14 @@ export const commentApi = {
 	 * 获取子评论列表
 	 * @param {number} parentId - 父评论ID
 	 */
-	getReplies: (parentId) => http.get(`/comments/${parentId}/replies`),
+	getReplies: (parentId, params) => http.get(`/comments/${parentId}/replies`, params),
 
 	/**
 	 * 创建新评论
 	 * @param {Object} data - 评论数据
 	 * @param {number} data.postId - 帖子ID
 	 * @param {string} data.content - 评论内容
-	 * @param {number} data.parentId - 父评论ID（可选）
+	 * @param {number} data.parentId - 父评论ID(可选)
 	 */
 	createComment: (data) => http.post('/comments', data),
 
@@ -249,10 +300,10 @@ export const actionApi = {
 	/**
 	 * 切换点赞状态
 	 * @param {Object} data - 点赞数据
-	 * @param {number} data.targetId - 目标ID（帖子或评论）
+	 * @param {number} data.targetId - 目标ID(帖子或评论)
 	 * @param {string} data.targetType - 目标类型 (post/comment)
 	 */
-	toggleLike: (data) => http.post('/actions/like', data),
+	toggleLike: (data) => http.post(`/actions/like?targetId=${data.targetId}&targetType=${data.targetType || 'post'}`, null),
 
 	/**
 	 * 切换收藏状态
@@ -260,16 +311,7 @@ export const actionApi = {
 	 * @param {number} data.targetId - 目标ID
 	 * @param {string} data.targetType - 目标类型
 	 */
-	toggleCollect: (data) => http.post('/actions/collect', data),
-
-	/**
-	 * 记录分享行为
-	 * @param {Object} data - 分享数据
-	 * @param {number} data.targetId - 目标ID
-	 * @param {string} data.targetType - 目标类型
-	 * @param {string} data.platform - 分享平台
-	 */
-	recordShare: (data) => http.post('/actions/share', data),
+	toggleCollect: (data) => http.post(`/actions/collect?targetId=${data.targetId}&targetType=${data.targetType || 'post'}`, null),
 
 	/**
 	 * 提交内容举报
@@ -279,7 +321,41 @@ export const actionApi = {
 	 * @param {string} data.reason - 举报原因
 	 * @param {string} data.description - 详细描述
 	 */
-	reportContent: (data) => http.post('/actions/report', data)
+	reportContent: (data) => http.post(`/actions/report?targetId=${data.targetId}&targetType=${data.targetType || 'post'}&reason=${encodeURIComponent(data.reason)}&description=${encodeURIComponent(data.description || '')}`, null),
+
+	/**
+	 * 切换关注状态
+	 * @param {Object} data - 关注数据
+	 * @param {number} data.targetUserId - 目标用户ID
+	 */
+	toggleFollow: (data) => http.post(`/actions/follow?targetUserId=${data.targetUserId}`, null),
+
+	/**
+	 * 获取关注列表
+	 * @param {number} userId - 用户ID
+	 * @param {Object} params - 分页参数
+	 * @param {number} params.current - 当前页码
+	 * @param {number} params.size - 每页数量
+	 */
+	getFollowing: (userId, params) => http.get('/actions/following', { userId, ...params }),
+
+	/**
+	 * 获取粉丝列表
+	 * @param {number} userId - 用户ID
+	 * @param {Object} params - 分页参数
+	 * @param {number} params.current - 当前页码
+	 * @param {number} params.size - 每页数量
+	 */
+	getFollowers: (userId, params) => http.get('/actions/followers', { userId, ...params }),
+
+	/**
+	 * 获取收藏列表
+	 * @param {number} userId - 用户ID
+	 * @param {Object} params - 分页参数
+	 * @param {number} params.current - 当前页码
+	 * @param {number} params.size - 每页数量
+	 */
+	getCollections: (userId, params) => http.get('/actions/collections', { userId, ...params })
 }
 
 /**
@@ -299,29 +375,16 @@ export const adminApi = {
 	verifyUser: (userId, data) => http.post(`/admin/users/${userId}/verify`, data),
 
 	/**
-	 * 获取待处理举报列表
-	 */
-	getPendingReports: (params) => http.get('/admin/reports/pending', params),
-
-	/**
-	 * 处理举报
-	 * @param {number} reportId - 举报ID
-	 * @param {Object} data - 处理结果
-	 */
-	handleReport: (reportId, data) => http.post(`/admin/reports/${reportId}/handle`, data),
-
-	/**
-	 * 管理员删除帖子
-	 * @param {number} postId - 帖子ID
-	 */
-	deletePost: (postId) => http.delete(`/admin/posts/${postId}`),
-
-	/**
-	 * 修改用户角色
+	 * 将用户提升为管理员
 	 * @param {number} userId - 用户ID
-	 * @param {Object} data - 角色数据
 	 */
-	updateUserRole: (userId, data) => http.put(`/admin/users/${userId}/role`, data),
+	promoteUser: (userId) => http.post(`/admin/users/${userId}/promote`),
+
+	/**
+	 * 管理员删除用户
+	 * @param {number} userId - 用户ID
+	 */
+	deleteUser: (userId) => http.delete(`/admin/users/${userId}`),
 
 	/**
 	 * 获取平台统计数据
@@ -336,8 +399,28 @@ export const adminApi = {
 	/**
 	 * 获取所有帖子列表
 	 */
-	getAllPosts: (params) => http.get('/admin/posts', params)
+	getAllPosts: (params) => http.get('/admin/posts', params),
+
+	/**
+	 * 管理员删除帖子
+	 * @param {number} postId - 帖子ID
+	 */
+	deletePost: (postId) => http.delete(`/admin/posts/${postId}`),
+
+	/**
+	 * 获取用户反馈列表
+	 * @param {Object} params - 查询参数（可选status）
+	 */
+	getFeedbackList: (params) => http.get('/admin/feedback', params),
+
+	/**
+	 * 回复用户反馈
+	 * @param {number} feedbackId - 反馈ID
+	 * @param {Object} data - 回复数据 { reply }
+	 */
+	replyFeedback: (feedbackId, data) => http.post(`/admin/feedback/${feedbackId}/reply`, data)
 }
+
 
 /**
  * 文件上传相关API - /api/files
@@ -348,28 +431,48 @@ export const fileApi = {
 	 * @param {File} file - 图片文件
 	 * @param {string} type - 图片类型 (avatar/post)
 	 */
-	uploadImage: (file, type = 'post') => {
+	uploadImage: (file, type = 'post', onProgress) => {
 		return new Promise((resolve, reject) => {
-			uni.uploadFile({
+			const headers = {
+				'userId': getUserId()
+			}
+			const token = getStoredToken()
+			if (token) {
+				headers['Authorization'] = 'Bearer ' + token
+			}
+
+			const uploadTask = uni.uploadFile({
 				url: 'http://localhost:8080/api/files/image',
 				filePath: file,
 				name: 'file',
 				formData: { type },
-				header: {
-					'userId': getUserId()
-				},
+				header: headers,
 				success: (response) => {
 					const result = JSON.parse(response.data)
 					if (result.code === 200) {
-						resolve(result.data)
+						let url = result.data
+						if (url && typeof url === 'object') {
+							url = url.url
+						}
+						if (url) {
+							resolve(url)
+						} else {
+							reject(new Error('����URL����ȷ��Ӧ�ṹ'))
+						}
 					} else {
 						reject(new Error(result.message))
 					}
 				},
 				fail: (error) => {
-					reject(new Error(error.errMsg))
+					reject(new Error(error.errMsg || '�ϴ�ʧ��'))
 				}
 			})
+
+			if (uploadTask && typeof onProgress === 'function' && typeof uploadTask.onProgressUpdate === 'function') {
+				uploadTask.onProgressUpdate((progressEvent) => {
+					onProgress(progressEvent.progress)
+				})
+			}
 		})
 	},
 
@@ -411,11 +514,11 @@ export const authApi = {
 	/**
 	 * 微信小程序登录
 	 * @param {Object} data - 微信登录数据
-	 * @param {string} data.code - 微信登录临时凭证（通过wx.login获取）
-	 * @param {string} data.nickname - 微信用户昵称（可选）
-	 * @param {string} data.avatar - 微信用户头像URL（可选）
-	 * @param {number} data.registerSource - 注册来源（2=微信小程序，3=微信App）
-	 * @param {string} data.questionnaireData - 身份认证问卷数据（可选，JSON格式）
+	 * @param {string} data.code - 微信登录临时凭证(通过wx.login获取)
+	 * @param {string} data.nickname - 微信用户昵称(可选)
+	 * @param {string} data.avatar - 微信用户头像URL(可选)
+	 * @param {number} data.registerSource - 注册来源(2=微信小程序,3=微信App)
+	 * @param {string} data.questionnaireData - 身份认证问卷数据(可选,JSON格式)
 	 */
 	wechatLogin: (data) => http.post('/auth/wechat-login', data),
 
@@ -446,7 +549,28 @@ export const authApi = {
 	getWechatConfigStatus: () => http.get('/auth/wechat-config-status')
 }
 
-// 获取用户ID的辅助函数（需要导入）
+/**
+ * 用户设置相关API
+ * 基于 PUT /users/me 端点的封装
+ */
+export const feedbackApi = {
+	/**
+	 * 提交意见反馈
+	 * @param {Object} data - 反馈数据
+	 * @param {string} data.type - 反馈类型 (bug/feature/experience/complaint/other)
+	 * @param {string} data.content - 反馈内容
+	 * @param {string} [data.contact] - 联系方式(选填)
+	 */
+	submitFeedback: (data) => http.post('/feedback', data),
+
+	/**
+	 * 获取当前用户的反馈记录
+	 * @returns {Promise<Array>} 反馈列表
+	 */
+	getMyFeedback: () => http.get('/feedback/me')
+}
+
+// 获取用户ID的辅助函数(需要导入)
 function getUserId() {
 	try {
 		const userInfo = uni.getStorageSync('userInfo')

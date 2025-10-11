@@ -18,7 +18,7 @@ public class UserAction{
     private String targetType;
 
     /**
-     * 行为类型: 0=点赞, 1=收藏, 2=分享, 3=举报
+     * 行为类型: 0=点赞, 1=收藏, 2=分享, 3=举报, 4=关注
      */
     private Integer actionType;
 

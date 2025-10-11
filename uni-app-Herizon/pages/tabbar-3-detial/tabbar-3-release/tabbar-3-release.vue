@@ -18,7 +18,7 @@
 			<view class="title-section">
 				<textarea
 					class="title-input"
-					placeholder="请输入标题（可选）"
+					placeholder="请输入标题(可选)"
 					v-model="formData.title"
 					:maxlength="100"
 					auto-height
@@ -59,14 +59,14 @@
 					<!-- 添加图片按钮 -->
 					<view
 						class="add-image-btn"
-						v-if="formData.images.length < 9"
+						v-if="formData.images.length < 3"
 						@click="selectImages"
 					>
 						<text class="add-icon">📷</text>
 						<text class="add-text">添加图片</text>
 					</view>
 				</view>
-				<text class="image-tip">最多可上传9张图片</text>
+				<text class="image-tip">最多可上传3张图片</text>
 			</view>
 
 			<!-- 标签选择区域 -->
@@ -89,13 +89,13 @@
 					</view>
 				</view>
 
-				<!-- 热门标签 -->
-				<view class="hot-tags">
-					<view class="tags-title">热门话题</view>
-					<view class="tags-list">
+				<!-- 可选话题列表 -->
+				<view class="available-tags">
+					<view class="tags-title">可选话题</view>
+					<view class="tags-list" v-if="allTags.length > 0">
 						<view
 							class="tag-item"
-							v-for="tag in hotTags"
+							v-for="tag in allTags"
 							:key="tag.id"
 							:class="{ 'selected': isTagSelected(tag.id) }"
 							@click="toggleTag(tag)"
@@ -103,18 +103,9 @@
 							#{{ tag.name }}
 						</view>
 					</view>
-				</view>
-
-				<!-- 创建新标签 -->
-				<view class="create-tag">
-					<input
-						class="tag-input"
-						placeholder="创建新话题"
-						v-model="newTagName"
-						@confirm="createNewTag"
-						:maxlength="20"
-					/>
-					<text class="create-btn" @click="createNewTag" v-if="newTagName.trim()">创建</text>
+					<view class="no-result" v-else>
+						<text class="no-result-text">暂无可选话题</text>
+					</view>
 				</view>
 			</view>
 
@@ -174,14 +165,15 @@
 /**
  * 发图文页面 - 创建图文帖子
  *
- * 功能特性：
+ * 功能特性:
  * - 标题和内容编辑
- * - 图片上传（最多9张）
+ * - 图片上传(最多3张,优化版 2025-10-01)
  * - 话题标签选择和创建
  * - 匿名发布选项
  * - 草稿保存功能
  * - 表情符号插入
  * - 字数统计限制
+ * - 上传进度显示
  */
 
 import { postApi, tagApi, fileApi } from '../../../utils/api.js'
@@ -200,8 +192,7 @@ export default {
 			},
 
 			// 标签相关
-			hotTags: [],           // 热门标签
-			newTagName: '',        // 新建标签名称
+			allTags: [],            // 所有可用标签
 
 			// UI状态
 			autoFocus: true,       // 自动聚焦
@@ -231,10 +222,10 @@ export default {
 	},
 
 	onLoad(options) {
-		// 加载热门标签
-		this.loadHotTags()
+		// 加载所有可用标签
+		this.loadAllTags()
 
-		// 如果有草稿ID，加载草稿
+		// 如果有草稿ID,加载草稿
 		if (options.draftId) {
 			this.loadDraft(options.draftId)
 		}
@@ -242,13 +233,21 @@ export default {
 
 	methods: {
 		/**
-		 * 加载热门标签
+		 * 加载所有可用标签
+		 * 用于搜索功能
 		 */
-		async loadHotTags() {
+		async loadAllTags() {
 			try {
-				this.hotTags = await tagApi.getHotTags(20)
+				// request.js 已经解包了 Result,直接返回 PageResult 对象
+				const pageResult = await tagApi.getTagList({
+					current: 1,
+					size: 100 // 加载前100个标签供搜索
+				})
+				if (pageResult && Array.isArray(pageResult.records)) {
+					this.allTags = pageResult.records
+				}
 			} catch (error) {
-				console.warn('加载热门标签失败:', error)
+				console.error('加载标签列表失败:', error)
 			}
 		},
 
@@ -270,10 +269,10 @@ export default {
 		 * 选择图片
 		 */
 		selectImages() {
-			const remainingCount = 9 - this.formData.images.length
+			const remainingCount = 3 - this.formData.images.length
 			if (remainingCount <= 0) {
 				uni.showToast({
-					title: '最多只能上传9张图片',
+					title: '最多只能上传3张图片',
 					icon: 'none'
 				})
 				return
@@ -290,36 +289,88 @@ export default {
 		},
 
 		/**
-		 * 上传图片
+		 * 上传图片(改进版 - 2025-10-01)
 		 * @param {Array} filePaths - 图片文件路径数组
 		 */
 		async uploadImages(filePaths) {
-			// 显示上传进度
-			uni.showLoading({
-				title: '上传中...'
-			})
-
 			try {
-				for (let filePath of filePaths) {
-					const imageUrl = await fileApi.uploadImage(filePath, 'post')
-					this.formData.images.push({
-						url: imageUrl,
-						file: filePath
+				let successCount = 0
+				let failCount = 0
+
+				// 逐个上传图片
+				for (let i = 0; i < filePaths.length; i++) {
+					const filePath = filePaths[i]
+
+					// 显示当前上传进度
+					uni.showLoading({
+						title: `上传中 ${i + 1}/${filePaths.length}`,
+						mask: true
 					})
+
+					try {
+						// 上传图片并监听进度
+						const imageUrl = await fileApi.uploadImage(filePath, 'post', (progress) => {
+							// 更新进度显示
+							uni.showLoading({
+								title: `上传中 ${i + 1}/${filePaths.length} (${progress}%)`,
+								mask: true
+							})
+						})
+
+						// 上传成功,添加到列表
+						this.formData.images.push({
+							url: imageUrl,
+							file: filePath
+						})
+						successCount++
+
+					} catch (uploadError) {
+						console.error(`图片${i + 1}上传失败:`, uploadError)
+						failCount++
+
+						// 询问是否继续上传剩余图片
+						if (i < filePaths.length - 1) {
+							try {
+								await uni.showModal({
+									title: '上传失败',
+									content: `第${i + 1}张图片上传失败,是否继续上传剩余图片?`,
+									confirmText: '继续',
+									cancelText: '停止'
+								})
+								// 用户选择继续,继续循环
+							} catch (modalError) {
+								// 用户选择停止,跳出循环
+								break
+							}
+						}
+					}
 				}
 
 				uni.hideLoading()
-				uni.showToast({
-					title: '上传成功',
-					icon: 'success'
-				})
+
+				// 显示上传结果
+				if (successCount > 0) {
+					uni.showToast({
+						title: failCount > 0 ?
+							`成功${successCount}张,失败${failCount}张` :
+							`上传成功(${successCount}张)`,
+						icon: failCount > 0 ? 'none' : 'success',
+						duration: 2000
+					})
+				} else {
+					uni.showToast({
+						title: '上传失败,请重试',
+						icon: 'error',
+						duration: 2000
+					})
+				}
 
 			} catch (error) {
 				uni.hideLoading()
-				console.error('图片上传失败:', error)
+				console.error('图片上传异常:', error)
 				uni.showToast({
-					title: '上传失败',
-					icon: 'none'
+					title: error.message || '上传失败',
+					icon: 'error'
 				})
 			}
 		},
@@ -379,53 +430,6 @@ export default {
 		 */
 		removeTag(tagId) {
 			this.formData.selectedTags = this.formData.selectedTags.filter(tag => tag.id !== tagId)
-		},
-
-		/**
-		 * 创建新标签
-		 */
-		async createNewTag() {
-			const tagName = this.newTagName.trim()
-			if (!tagName) return
-
-			// 检查是否已存在
-			if (this.hotTags.some(tag => tag.name === tagName)) {
-				uni.showToast({
-					title: '话题已存在',
-					icon: 'none'
-				})
-				return
-			}
-
-			try {
-				const newTag = await tagApi.createTag({
-					name: tagName,
-					description: `用户创建的话题：${tagName}`
-				})
-
-				// 添加到热门标签列表
-				this.hotTags.unshift(newTag)
-
-				// 自动选中新创建的标签
-				if (this.formData.selectedTags.length < 5) {
-					this.formData.selectedTags.push(newTag)
-				}
-
-				// 清空输入框
-				this.newTagName = ''
-
-				uni.showToast({
-					title: '话题创建成功',
-					icon: 'success'
-				})
-
-			} catch (error) {
-				console.error('创建标签失败:', error)
-				uni.showToast({
-					title: '创建失败',
-					icon: 'none'
-				})
-			}
 		},
 
 		/**
@@ -515,7 +519,7 @@ export default {
 			if (this.canPublish) {
 				uni.showModal({
 					title: '确认退出',
-					content: '当前有未保存的内容，确定要退出吗？',
+					content: '当前有未保存的内容,确定要退出吗?',
 					confirmText: '保存草稿',
 					cancelText: '直接退出',
 					success: (res) => {
@@ -590,7 +594,7 @@ export default {
 			} catch (error) {
 				console.error('发布失败:', error)
 				uni.showToast({
-					title: '发布失败，请重试',
+					title: '发布失败,请重试',
 					icon: 'none'
 				})
 			} finally {
@@ -646,12 +650,12 @@ export default {
 /* 内容区域 */
 .content-area {
 	flex: 1;
-	/* 移除padding，通过各个section的margin来控制间距，避免width: 100%溢出 */
+	/* 移除padding,通过各个section的margin来控制间距,避免width: 100%溢出 */
 }
 
 /* 标题输入区域 */
 .title-section {
-	margin: 30upx 30upx 40upx 30upx; /* 顶部、左右30upx间距，底部40upx */
+	margin: 30upx 30upx 40upx 30upx; /* 顶部、左右30upx间距,底部40upx */
 
 	.title-input {
 		width: 100%;
@@ -676,7 +680,7 @@ export default {
 
 /* 内容输入区域 */
 .content-section {
-	margin: 0 30upx 40upx 30upx; /* 左右30upx间距，底部40upx */
+	margin: 0 30upx 40upx 30upx; /* 左右30upx间距,底部40upx */
 
 	.content-input {
 		width: 100%;
@@ -701,7 +705,7 @@ export default {
 
 /* 图片区域 */
 .images-section {
-	margin: 0 30upx 40upx 30upx; /* 左右30upx间距，底部40upx */
+	margin: 0 30upx 40upx 30upx; /* 左右30upx间距,底部40upx */
 
 	.images-grid {
 		display: flex;
@@ -772,7 +776,7 @@ export default {
 
 /* 标签区域 */
 .tags-section {
-	margin: 0 30upx 40upx 30upx; /* 左右30upx间距，底部40upx */
+	margin: 0 30upx 40upx 30upx; /* 左右30upx间距,底部40upx */
 
 	.section-title {
 		display: flex;
@@ -822,13 +826,15 @@ export default {
 		}
 	}
 
-	.hot-tags {
+	/* 可用标签列表样式 */
+	.available-tags {
 		margin-bottom: 30upx;
 
 		.tags-title {
 			font-size: 28upx;
-			color: #666;
-			margin-bottom: 15upx;
+			font-weight: 500;
+			color: #333;
+			margin-bottom: 20upx;
 		}
 
 		.tags-list {
@@ -843,7 +849,7 @@ export default {
 				font-size: 26upx;
 				color: #666;
 				transition: all 0.3s;
-				max-width: calc(50% - 7.5upx); /* 限制最大宽度防止溢出 */
+				max-width: calc(50% - 7.5upx);
 				overflow: hidden;
 				text-overflow: ellipsis;
 				white-space: nowrap;
@@ -855,38 +861,23 @@ export default {
 				}
 			}
 		}
-	}
 
-	.create-tag {
-		display: flex;
-		align-items: center;
-		gap: 20upx;
+		.no-result {
+			text-align: center;
+			padding: 60upx 40upx;
 
-		.tag-input {
-			flex: 1;
-			padding: 15upx 20upx;
-			background-color: #f8f8f8;
-			border-radius: 25upx;
-			font-size: 26upx;
-			box-sizing: border-box; /* 确保padding不会导致溢出 */
-			min-width: 0; /* 允许flex项目收缩 */
-		}
-
-		.create-btn {
-			padding: 15upx 30upx;
-			background-color: #007aff;
-			color: #fff;
-			border-radius: 25upx;
-			font-size: 26upx;
-			flex-shrink: 0; /* 防止按钮被挤压 */
-			white-space: nowrap;
+			.no-result-text {
+				display: block;
+				font-size: 28upx;
+				color: #999;
+			}
 		}
 	}
 }
 
 /* 设置区域 */
 .settings-section {
-	margin: 0 30upx 40upx 30upx; /* 左右30upx间距，底部40upx */
+	margin: 0 30upx 40upx 30upx; /* 左右30upx间距,底部40upx */
 
 	.setting-item {
 		display: flex;

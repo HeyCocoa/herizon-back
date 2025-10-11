@@ -1,14 +1,10 @@
-<!-- 话题页面 - 显示标签列表和话题帖子（系统变更后新页面） -->
+<!-- 话题页面 - 显示标签列表和话题帖子(系统变更后新页面) -->
 <template>
-	<!-- 主容器：话题展示 -->
+	<!-- 主容器:话题展示 -->
 	<view class="topics-container">
 		<!-- 顶部导航栏 -->
 		<view class="top-nav" :style="{ paddingTop: statusBarHeight + 'px' }">
 			<view class="nav-title">话题</view>
-			<!-- 搜索按钮 -->
-			<view class="search-btn" @click="handleSearch">
-				<text class="search-icon">🔍</text>
-			</view>
 		</view>
 
 		<!-- 话题标签列表 -->
@@ -29,7 +25,7 @@
 				<!-- 标签信息 -->
 				<view class="tag-header">
 					<view class="tag-name">#{{ tag.name }}</view>
-					<view class="tag-count">{{ tag.postCount || 0 }}篇内容</view>
+					<view class="tag-count">{{ tag.postCount !== null && tag.postCount !== undefined ? tag.postCount : '待统计' }}篇内容</view>
 				</view>
 
 				<!-- 标签描述 -->
@@ -37,7 +33,7 @@
 
 				<!-- 最新帖子预览 -->
 				<view class="tag-preview" v-if="tag.latestPostTitle">
-					<text class="preview-label">最新：</text>
+					<text class="preview-label">最新:</text>
 					<text class="preview-title">{{ tag.latestPostTitle }}</text>
 				</view>
 
@@ -77,22 +73,22 @@
 
 <script>
 /**
- * 话题页面（系统变更后的新页面）
+ * 话题页面(系统变更后的新页面)
  *
- * 功能特性：
+ * 功能特性:
  * - 展示所有标签列表
- * - 显示标签统计信息（帖子数量、热度等）
+ * - 显示标签统计信息(帖子数量、热度等)
  * - 点击标签进入该标签下的帖子列表
  * - 下拉刷新标签列表
  * - 上拉加载更多标签
  *
- * 系统变更说明：
+ * 系统变更说明:
  * - 从"关注"页面改为"话题"页面
- * - 移除用户关注功能，改为标签浏览功能
+ * - 移除用户关注功能,改为标签浏览功能
  * - 点击标签后跳转到标签帖子列表页面
  */
 
-import { tagApi } from '../../../utils/api.js'
+import { tagApi, postApi } from '../../../utils/api.js'
 // import { formatTime } from '../../../utils/common.js'
 
 export default {
@@ -138,7 +134,7 @@ export default {
 	methods: {
 		/**
 		 * 加载标签列表
-		 * @param {boolean} reset - 是否重置列表（刷新时为true）
+		 * @param {boolean} reset - 是否重置列表(刷新时为true)
 		 */
 		async loadTagList(reset = false) {
 			// 防止重复请求
@@ -163,23 +159,51 @@ export default {
 				}
 
 				const response = await tagApi.getTagList(params)
+				const currentPage = this.pageParams.current
+				const pageSize = this.pageParams.size || 1
+				const records = response.records || []
 
 				// 处理分页数据
 				if (reset) {
-					this.tagList = response.records || []
+					this.tagList = records
 				} else {
-					this.tagList.push(...(response.records || []))
+					this.tagList.push(...records)
+				}
+
+				// 加载实时帖子数量(不阻塞UI渲染)
+				this.loadRealTimePostCounts()
+
+				const pagesRaw = typeof response.pages !== 'undefined' ? response.pages : undefined
+				let totalPages = Number(pagesRaw)
+				if (!Number.isFinite(totalPages) || totalPages <= 0) {
+					const totalRaw = typeof response.total !== 'undefined' ? response.total : undefined
+					const total = Number(totalRaw)
+					if (Number.isFinite(total) && total > 0) {
+						totalPages = Math.max(1, Math.ceil(total / pageSize))
+					} else if (records.length === pageSize) {
+						totalPages = currentPage + 1
+					} else {
+						totalPages = currentPage
+					}
 				}
 
 				// 更新分页状态
-				this.hasMore = this.pageParams.current < (response.pages || 1)
-				this.pageParams.current++
+				this.hasMore = currentPage < totalPages
+				this.pageParams.current = this.hasMore ? currentPage + 1 : Math.max(totalPages, 1)
 
 			} catch (error) {
 				console.error('加载标签列表失败:', error)
-				console.warn('API调用失败，使用模拟数据:', error)
-				// 如果API调用失败，使用模拟数据
-				this.loadMockData(reset)
+				// API调用失败时显示错误提示,不再使用Mock数据
+				uni.showToast({
+					title: '加载失败,请重试',
+					icon: 'none',
+					duration: 2000
+				})
+				// 重置数据为空
+				if (reset) {
+					this.tagList = []
+					this.hasMore = false
+				}
 			} finally {
 				this.isLoading = false
 				this.isLoadingMore = false
@@ -187,60 +211,34 @@ export default {
 			}
 		},
 
+		// Mock数据函数已删除,直接使用真实API
+
 		/**
-		 * 加载模拟标签数据（API调用失败时使用）
+		 * 加载标签的实时帖子数量
+		 * <p>
+		 * 为当前显示的所有标签加载实时帖子数量
+		 * 采用并发请求提高性能,不阻塞主UI渲染
 		 */
-		loadMockData(reset) {
-			const mockTags = [
-				{
-					id: 1,
-					name: 'AIGC',
-					description: '人工智能生成内容相关话题',
-					postCount: 128,
-					latestPostTitle: '如何利用AI工具提高工作效率',
-					lastUsedAt: new Date().toISOString()
-				},
-				{
-					id: 2,
-					name: '技能提升',
-					description: '职业技能和专业能力提升',
-					postCount: 245,
-					latestPostTitle: '职场新人必备的10个软技能',
-					lastUsedAt: new Date(Date.now() - 3600000).toISOString()
-				},
-				{
-					id: 3,
-					name: '薪资谈判',
-					description: '薪资谈判技巧和经验分享',
-					postCount: 89,
-					latestPostTitle: '年终调薪谈判的黄金法则',
-					lastUsedAt: new Date(Date.now() - 7200000).toISOString()
-				},
-				{
-					id: 4,
-					name: '职业发展',
-					description: '职业规划和发展路径讨论',
-					postCount: 156,
-					latestPostTitle: '30岁女性的职业转型之路',
-					lastUsedAt: new Date(Date.now() - 10800000).toISOString()
-				},
-				{
-					id: 5,
-					name: '面试技巧',
-					description: '求职面试经验和技巧分享',
-					postCount: 203,
-					latestPostTitle: '技术面试中最容易忽略的细节',
-					lastUsedAt: new Date(Date.now() - 14400000).toISOString()
-				}
-			]
+		async loadRealTimePostCounts() {
+			try {
+				// 为每个标签并发请求实时帖子数量
+				const countPromises = this.tagList.map(async (tag) => {
+					try {
+						const count = await postApi.getPostCountByTag(tag.id)
+						// 直接更新tag对象的postCount字段,触发视图更新
+						this.$set(tag, 'postCount', count)
+					} catch (error) {
+						console.error(`获取标签 ${tag.name} 的帖子数量失败:`, error)
+						// 失败时保持原值或设为0
+						this.$set(tag, 'postCount', tag.postCount || 0)
+					}
+				})
 
-			if (reset) {
-				this.tagList = mockTags
-			} else {
-				this.tagList.push(...mockTags)
+				// 等待所有请求完成(不阻塞,失败不影响其他标签)
+				await Promise.allSettled(countPromises)
+			} catch (error) {
+				console.error('批量加载帖子数量失败:', error)
 			}
-
-			this.hasMore = false
 		},
 
 		/**
@@ -261,24 +259,16 @@ export default {
 		},
 
 		/**
-		 * 点击标签，进入该标签的帖子列表
+		 * 点击标签,进入该标签的帖子列表
 		 * @param {Object} tag - 标签对象
 		 */
 		goToTagPosts(tag) {
-			// 跳转到标签帖子列表页面（需要新创建）
+			// 跳转到标签帖子列表页面(需要新创建)
 			uni.navigateTo({
 				url: `/pages/tag-posts/tag-posts?tagId=${tag.id}&tagName=${encodeURIComponent(tag.name)}`
 			})
 		},
 
-		/**
-		 * 搜索功能
-		 */
-		handleSearch() {
-			uni.navigateTo({
-				url: '/pages/search/search'
-			})
-		},
 
 		/**
 		 * 格式化时间
@@ -318,7 +308,7 @@ export default {
 			const month = target.getMonth() + 1
 			const date = target.getDate()
 
-			// 如果是当年，不显示年份
+			// 如果是当年,不显示年份
 			if (year === now.getFullYear()) {
 				return `${month}月${date}日`
 			}
@@ -351,16 +341,6 @@ export default {
 	font-size: 18px;
 	font-weight: 600;
 	color: #333333;
-}
-
-.search-btn {
-	padding: 8px;
-	border-radius: 20px;
-	background-color: #f5f5f5;
-}
-
-.search-icon {
-	font-size: 16px;
 }
 
 .content-scroll {

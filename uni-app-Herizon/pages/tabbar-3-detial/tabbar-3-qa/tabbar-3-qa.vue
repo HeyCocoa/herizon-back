@@ -1,12 +1,12 @@
-<!-- 问答发布页面 - 创建问答帖子 -->
+<!-- 投票发布页面 - 创建投票帖子 -->
 <template>
-	<view class="qa-container">
+	<view class="poll-container">
 		<!-- 顶部导航栏 -->
 		<view class="nav-bar">
 			<view class="nav-item" @click="handleCancel">
 				<text class="nav-text">取消</text>
 			</view>
-			<view class="nav-title">提问</view>
+			<view class="nav-title">发起投票</view>
 			<view class="nav-item" @click="handlePublish">
 				<text class="nav-text publish-btn" :class="{ 'active': canPublish }">发布</text>
 			</view>
@@ -14,33 +14,33 @@
 
 		<!-- 内容编辑区域 -->
 		<scroll-view class="content-area" scroll-y="true">
-			<!-- 问题标题输入 -->
+			<!-- 投票标题输入 -->
 			<view class="title-section">
 				<view class="section-header">
-					<text class="section-title">问题标题</text>
+					<text class="section-title">投票标题</text>
 					<text class="required-mark">*</text>
 				</view>
 				<textarea
 					class="title-input"
-					placeholder="请简明扼要地描述你的问题..."
+					placeholder="请输入投票主题..."
 					v-model="formData.title"
 					:maxlength="100"
 					auto-height
 					@input="onTitleInput"
 				/>
 				<text class="char-count">{{ formData.title.length }}/100</text>
-				<text class="input-tip">清晰明确的标题有助于获得更好的回答</text>
+				<text class="input-tip">清晰的标题有助于获得更多参与</text>
 			</view>
 
-			<!-- 问题描述输入 -->
+			<!-- 投票描述输入 -->
 			<view class="content-section">
 				<view class="section-header">
-					<text class="section-title">问题描述</text>
+					<text class="section-title">投票说明</text>
 					<text class="optional-mark">可选</text>
 				</view>
 				<textarea
 					class="content-input"
-					placeholder="详细描述你的问题背景、遇到的困难、期望的帮助等..."
+					placeholder="详细描述投票背景、目的等..."
 					v-model="formData.content"
 					:maxlength="2000"
 					auto-height
@@ -48,56 +48,47 @@
 					:focus="autoFocus"
 				/>
 				<text class="char-count">{{ formData.content.length }}/2000</text>
-				<text class="input-tip">提供更多细节有助于获得针对性的回答</text>
+				<text class="input-tip">提供更多信息有助于用户做出选择</text>
 			</view>
 
-			<!-- 问题分类选择 -->
-			<view class="category-section">
+			<!-- 投票选项输入 -->
+			<view class="options-section">
 				<view class="section-header">
-					<text class="section-title">问题分类</text>
+					<text class="section-title">投票选项</text>
 					<text class="required-mark">*</text>
+					<text class="option-count">{{ formData.pollOptions.length }}/5</text>
 				</view>
-				<view class="category-list">
+				<text class="input-tip option-tip">至少需要2个选项,最多5个选项</text>
+
+				<!-- 已添加的选项 -->
+				<view class="options-list">
 					<view
-						class="category-item"
-						v-for="category in questionCategories"
-						:key="category.id"
-						:class="{ 'selected': formData.categoryId === category.id }"
-						@click="selectCategory(category.id)"
+						class="option-item"
+						v-for="(option, index) in formData.pollOptions"
+						:key="index"
 					>
-						<text class="category-icon">{{ category.icon }}</text>
-						<text class="category-name">{{ category.name }}</text>
-					</view>
-				</view>
-			</view>
-
-			<!-- 悬赏设置 -->
-			<view class="reward-section">
-				<view class="section-header">
-					<text class="section-title">悬赏设置</text>
-					<text class="optional-mark">可选</text>
-					<switch
-						class="reward-switch"
-						:checked="formData.hasReward"
-						@change="toggleReward"
-						color="#f33e54"
-					/>
-				</view>
-
-				<view class="reward-content" v-if="formData.hasReward">
-					<view class="reward-options">
-						<view
-							class="reward-option"
-							v-for="option in rewardOptions"
-							:key="option.value"
-							:class="{ 'selected': formData.rewardPoints === option.value }"
-							@click="selectReward(option.value)"
-						>
-							<text class="reward-points">{{ option.value }}</text>
-							<text class="reward-label">积分</text>
+						<view class="option-number">{{ index + 1 }}</view>
+						<input
+							class="option-input"
+							v-model="formData.pollOptions[index]"
+							:placeholder="'选项 ' + (index + 1)"
+							maxlength="50"
+							@input="onOptionInput(index)"
+						/>
+						<view class="option-actions">
+							<text class="action-icon delete-icon" @click="removeOption(index)" v-if="formData.pollOptions.length > 2">✕</text>
 						</view>
 					</view>
-					<text class="reward-tip">设置悬赏可以吸引更多专业人士回答你的问题</text>
+				</view>
+
+				<!-- 添加选项按钮 -->
+				<view
+					class="add-option-btn"
+					v-if="formData.pollOptions.length < 5"
+					@click="addOption"
+				>
+					<text class="add-icon">+</text>
+					<text class="add-text">添加选项</text>
 				</view>
 			</view>
 
@@ -123,14 +114,14 @@
 					<!-- 添加图片按钮 -->
 					<view
 						class="add-image-btn"
-						v-if="formData.images.length < 6"
+						v-if="formData.images.length < 3"
 						@click="selectImages"
 					>
 						<text class="add-icon">📷</text>
 						<text class="add-text">添加图片</text>
 					</view>
 				</view>
-				<text class="image-tip">最多可上传6张图片，用于辅助说明问题</text>
+				<text class="image-tip">最多可上传3张图片,用于辅助说明投票内容</text>
 			</view>
 
 			<!-- 标签选择区域 -->
@@ -153,19 +144,22 @@
 					</view>
 				</view>
 
-				<!-- 推荐标签 -->
-				<view class="hot-tags">
-					<view class="tags-title">推荐话题</view>
-					<view class="tags-list">
+				<!-- 所有可用标签 -->
+				<view class="available-tags">
+					<view class="tags-title">可选话题</view>
+					<view class="tags-list" v-if="allTags.length > 0">
 						<view
 							class="tag-item"
-							v-for="tag in recommendTags"
+							v-for="tag in allTags"
 							:key="tag.id"
 							:class="{ 'selected': isTagSelected(tag.id) }"
 							@click="toggleTag(tag)"
 						>
 							<text class="tag-text">#{{ tag.name }}</text>
 						</view>
+					</view>
+					<view class="no-result" v-else>
+						<text class="no-result-text">暂无可选话题</text>
 					</view>
 				</view>
 			</view>
@@ -178,7 +172,7 @@
 				<view class="privacy-options">
 					<view class="privacy-item" @click="toggleAnonymous">
 						<view class="privacy-info">
-							<text class="privacy-title">匿名提问</text>
+							<text class="privacy-title">匿名发起</text>
 							<text class="privacy-desc">开启后其他用户无法看到你的身份信息</text>
 						</view>
 						<switch
@@ -201,11 +195,14 @@
 					<text class="modal-title">发布确认</text>
 				</view>
 				<view class="modal-content">
-					<text class="modal-text">确定要发布这个问题吗？</text>
-					<view class="question-preview">
+					<text class="modal-text">确定要发布这个投票吗?</text>
+					<view class="poll-preview">
 						<text class="preview-title">{{ formData.title }}</text>
-						<text class="preview-category" v-if="selectedCategory">{{ selectedCategory.name }}</text>
-						<text class="preview-reward" v-if="formData.hasReward">悬赏 {{ formData.rewardPoints }} 积分</text>
+						<view class="preview-options">
+							<text class="preview-option" v-for="(option, index) in formData.pollOptions" :key="index">
+								{{ index + 1 }}. {{ option }}
+							</text>
+						</view>
 					</view>
 				</view>
 				<view class="modal-actions">
@@ -228,6 +225,20 @@
 </template>
 
 <script>
+	/**
+	 * 投票发布页面 - TabBar第3页的详情页
+	 *
+	 * 提供投票帖发布功能:
+	 * - 投票标题和说明
+	 * - 2-5个投票选项
+	 * - 可选图片(最多3张)
+	 * - 可选标签(最多3个)
+	 * - 匿名发起开关
+	 *
+	 * 后端接口:POST /api/posts
+	 * 字段要求:type=1, pollOptions=[...], 其他字段同普通帖子
+	 */
+
 	// 导入必要的工具和API
 	import { postApi, tagApi, fileApi } from '../../../utils/api.js'
 	import { verifyAndExecute, USER_ROLES } from '../../../utils/auth.js'
@@ -237,38 +248,17 @@
 			return {
 				// 表单数据
 				formData: {
-					title: '',           // 问题标题
-					content: '',         // 问题描述
-					categoryId: null,    // 问题分类ID
-					hasReward: false,    // 是否设置悬赏
-					rewardPoints: 0,     // 悬赏积分
+					title: '',           // 投票标题
+					content: '',         // 投票说明
+					pollOptions: ['', ''], // 投票选项列表(默认2个空选项)
 					isAnonymous: false,  // 是否匿名
 					selectedTags: [],    // 已选标签
 					images: []           // 上传的图片
 				},
 
-				// 问题分类列表
-				questionCategories: [
-					{ id: 1, name: '职场发展', icon: '💼' },
-					{ id: 2, name: '技能学习', icon: '📚' },
-					{ id: 3, name: '人际关系', icon: '👥' },
-					{ id: 4, name: '工作压力', icon: '😰' },
-					{ id: 5, name: '薪资谈判', icon: '💰' },
-					{ id: 6, name: '转行跳槽', icon: '🚀' },
-					{ id: 7, name: '领导力', icon: '👑' },
-					{ id: 8, name: '其他', icon: '❓' }
-				],
-
-				// 悬赏选项
-				rewardOptions: [
-					{ value: 10, label: '10积分' },
-					{ value: 20, label: '20积分' },
-					{ value: 50, label: '50积分' },
-					{ value: 100, label: '100积分' }
-				],
-
 				// 推荐标签
 				recommendTags: [],
+				allTags: [],              // 所有可用标签
 
 				// 界面状态
 				autoFocus: false,
@@ -281,17 +271,12 @@
 		computed: {
 			/**
 			 * 是否可以发布
-			 * 需要标题不为空且选择了分类
+			 * 需要标题不为空且至少有2个非空选项
 			 */
 			canPublish() {
-				return this.formData.title.trim().length > 0 && this.formData.categoryId !== null
-			},
-
-			/**
-			 * 当前选中的分类
-			 */
-			selectedCategory() {
-				return this.questionCategories.find(cat => cat.id === this.formData.categoryId)
+				const hasTitle = this.formData.title.trim().length > 0
+				const validOptions = this.formData.pollOptions.filter(opt => opt.trim().length > 0)
+				return hasTitle && validOptions.length >= 2
 			}
 		},
 
@@ -317,8 +302,9 @@
 			 */
 			async initializePage() {
 				try {
-					// 加载推荐标签
+					// 加载推荐标签和所有标签
 					await this.loadRecommendTags()
+					await this.loadAllTags()
 				} catch (error) {
 					console.error('页面初始化失败:', error)
 				}
@@ -329,10 +315,9 @@
 			 */
 			async loadRecommendTags() {
 				try {
-					const response = await tagApi.getHotTags(15)
-					if (response.code === 200) {
-						this.recommendTags = response.data
-					}
+					// request.js已解包Result对象
+					const result = await tagApi.getHotTags(15)
+					this.recommendTags = result
 				} catch (error) {
 					console.error('加载推荐标签失败:', error)
 					// 使用默认标签
@@ -344,6 +329,24 @@
 						{ id: 5, name: '团队管理' },
 						{ id: 6, name: '技能提升' }
 					]
+				}
+			},
+
+			/**
+			 * 加载所有标签(用于搜索)
+			 */
+			async loadAllTags() {
+				try {
+					// request.js 已经解包了 Result,直接返回 PageResult 对象
+					const pageResult = await tagApi.getTagList({
+						current: 1,
+						size: 100 // 加载前100个标签供搜索
+					})
+					if (pageResult && Array.isArray(pageResult.records)) {
+						this.allTags = pageResult.records
+					}
+				} catch (error) {
+					console.error('加载标签列表失败:', error)
 				}
 			},
 
@@ -362,31 +365,40 @@
 			},
 
 			/**
-			 * 选择问题分类
-			 * @param {number} categoryId - 分类ID
+			 * 选项输入处理
+			 * @param {number} index - 选项索引
 			 */
-			selectCategory(categoryId) {
-				this.formData.categoryId = categoryId
+			onOptionInput(index) {
+				// 可以在这里添加实时校验逻辑
 			},
 
 			/**
-			 * 切换悬赏开关
+			 * 添加投票选项
 			 */
-			toggleReward() {
-				this.formData.hasReward = !this.formData.hasReward
-				if (!this.formData.hasReward) {
-					this.formData.rewardPoints = 0
-				} else if (this.formData.rewardPoints === 0) {
-					this.formData.rewardPoints = 10
+			addOption() {
+				if (this.formData.pollOptions.length < 5) {
+					this.formData.pollOptions.push('')
+				} else {
+					uni.showToast({
+						title: '最多只能添加5个选项',
+						icon: 'none'
+					})
 				}
 			},
 
 			/**
-			 * 选择悬赏积分
-			 * @param {number} points - 积分数量
+			 * 移除投票选项
+			 * @param {number} index - 选项索引
 			 */
-			selectReward(points) {
-				this.formData.rewardPoints = points
+			removeOption(index) {
+				if (this.formData.pollOptions.length > 2) {
+					this.formData.pollOptions.splice(index, 1)
+				} else {
+					uni.showToast({
+						title: '至少需要保留2个选项',
+						icon: 'none'
+					})
+				}
 			},
 
 			/**
@@ -394,7 +406,7 @@
 			 */
 			selectImages() {
 				uni.chooseImage({
-					count: 6 - this.formData.images.length,
+					count: 3 - this.formData.images.length,
 					sizeType: ['compressed'],
 					sourceType: ['album', 'camera'],
 					success: (res) => {
@@ -508,7 +520,7 @@
 				if (this.hasUnsavedContent()) {
 					uni.showModal({
 						title: '确认退出',
-						content: '退出后内容将不会保存，确定要退出吗？',
+						content: '退出后内容将不会保存,确定要退出吗?',
 						success: (res) => {
 							if (res.confirm) {
 								this.navigateBack()
@@ -525,8 +537,10 @@
 			 * @returns {boolean} 是否有未保存内容
 			 */
 			hasUnsavedContent() {
+				const hasOptions = this.formData.pollOptions.some(opt => opt.trim().length > 0)
 				return this.formData.title.trim().length > 0 ||
 					   this.formData.content.trim().length > 0 ||
+					   hasOptions ||
 					   this.formData.images.length > 0 ||
 					   this.formData.selectedTags.length > 0
 			},
@@ -560,15 +574,16 @@
 			showValidationErrors() {
 				if (!this.formData.title.trim()) {
 					uni.showToast({
-						title: '请输入问题标题',
+						title: '请输入投票标题',
 						icon: 'none'
 					})
 					return
 				}
 
-				if (!this.formData.categoryId) {
+				const validOptions = this.formData.pollOptions.filter(opt => opt.trim().length > 0)
+				if (validOptions.length < 2) {
 					uni.showToast({
-						title: '请选择问题分类',
+						title: '至少需要2个投票选项',
 						icon: 'none'
 					})
 					return
@@ -583,7 +598,7 @@
 			},
 
 			/**
-			 * 确认发布问题
+			 * 确认发布投票
 			 */
 			async confirmPublish() {
 				try {
@@ -598,42 +613,48 @@
 						}
 					}, 200)
 
+					// 过滤空选项
+					const validOptions = this.formData.pollOptions
+						.map(opt => opt.trim())
+						.filter(opt => opt.length > 0)
+
+					if (validOptions.length < 2 || validOptions.length > 5) {
+						throw new Error('投票选项必须在2-5个之间')
+					}
+
 					// 准备发布数据
 					const publishData = {
 						title: this.formData.title.trim(),
 						content: this.formData.content.trim(),
-						type: 1, // 问答类型
-						categoryId: this.formData.categoryId,
+						type: 1, // 投票类型
 						tagIds: this.formData.selectedTags.map(tag => tag.id),
 						imageUrls: this.formData.images.map(img => img.url),
 						isAnonymous: this.formData.isAnonymous,
-						rewardPoints: this.formData.hasReward ? this.formData.rewardPoints : 0
+						pollOptions: validOptions // 投票选项列表
 					}
 
 					// 调用发布API
-					const response = await postApi.createPost(publishData)
+					// request.js已解包Result对象,直接返回Post对象
+					const result = await postApi.createPost(publishData)
 
 					clearInterval(progressInterval)
 					this.uploadProgress = 100
 
-					if (response.code === 200) {
-						uni.showToast({
-							title: '发布成功',
-							icon: 'success'
-						})
+					// 如果执行到这里说明API调用成功(失败会在拦截器抛出异常)
+					uni.showToast({
+						title: '发布成功',
+						icon: 'success'
+					})
 
-						// 跳转到首页
-						setTimeout(() => {
-							uni.switchTab({
-								url: '/pages/tabbar/tabbar-1/tabbar-1'
-							})
-						}, 1500)
-					} else {
-						throw new Error(response.message || '发布失败')
-					}
+					// 跳转到首页
+					setTimeout(() => {
+						uni.switchTab({
+							url: '/pages/tabbar/tabbar-1/tabbar-1'
+						})
+					}, 1500)
 
 				} catch (error) {
-					console.error('发布问题失败:', error)
+					console.error('发布投票失败:', error)
 					uni.showToast({
 						title: error.message || '发布失败',
 						icon: 'none'
@@ -648,33 +669,27 @@
 </script>
 
 <style scoped>
-	/* 主容器样式 */
-	.qa-container {
-		width: 100%;
-		height: 100vh;
-		background-color: #f5f5f5;
+	/* 主容器样式 - 参照图文发布页的布局模式 */
+	.poll-container {
 		display: flex;
 		flex-direction: column;
+		height: 100vh;
+		background-color: #f5f5f5;
 	}
 
 	/* 顶部导航栏 */
 	.nav-bar {
-		height: 88rpx;
-		background-color: #fff;
-		border-bottom: 1rpx solid #e5e5e5;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0 30rpx;
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		z-index: 999;
+		padding: 20rpx 30rpx;
+		border-bottom: 2rpx solid #f0f0f0;
+		background-color: #fff;
+		z-index: 100;
 	}
 
 	.nav-item {
-		min-width: 80rpx;
+		min-width: 100rpx;
 	}
 
 	.nav-text {
@@ -698,11 +713,10 @@
 		font-weight: bold;
 	}
 
-	/* 内容区域 */
+	/* 内容区域 - 使用flex: 1而不是固定高度,移除padding通过section的margin控制间距 */
 	.content-area {
 		flex: 1;
-		margin-top: 88rpx;
-		padding: 30rpx;
+		/* 不设置padding,通过各个section的margin来控制间距,避免width: 100%溢出 */
 	}
 
 	/* 通用部分样式 */
@@ -733,6 +747,12 @@
 		border-radius: 8rpx;
 	}
 
+	.option-count {
+		margin-left: auto;
+		font-size: 24rpx;
+		color: #999;
+	}
+
 	.char-count {
 		font-size: 24rpx;
 		color: #999;
@@ -747,9 +767,13 @@
 		line-height: 1.4;
 	}
 
-	/* 标题输入区域 */
+	.option-tip {
+		margin-bottom: 15rpx;
+	}
+
+	/* 标题输入区域 - 通过margin控制外部间距 */
 	.title-section {
-		margin-bottom: 40rpx;
+		margin: 30rpx 30rpx 40rpx 30rpx;  /* 顶部、左右30rpx,底部40rpx */
 	}
 
 	.title-input {
@@ -762,15 +786,16 @@
 		line-height: 1.5;
 		border: 2rpx solid #e5e5e5;
 		transition: border-color 0.3s;
+		box-sizing: border-box;  /* 确保padding和border不会导致元素溢出 */
 	}
 
 	.title-input:focus {
 		border-color: #f33e54;
 	}
 
-	/* 内容输入区域 */
+	/* 内容输入区域 - 通过margin控制外部间距 */
 	.content-section {
-		margin-bottom: 40rpx;
+		margin: 0 30rpx 40rpx 30rpx;  /* 左右30rpx,底部40rpx */
 	}
 
 	.content-input {
@@ -783,108 +808,100 @@
 		line-height: 1.6;
 		border: 2rpx solid #e5e5e5;
 		transition: border-color 0.3s;
+		box-sizing: border-box;  /* 确保padding和border不会导致元素溢出 */
 	}
 
 	.content-input:focus {
 		border-color: #f33e54;
 	}
 
-	/* 分类选择区域 */
-	.category-section {
-		margin-bottom: 40rpx;
+	/* 投票选项区域 - 通过margin控制外部间距 */
+	.options-section {
+		margin: 0 30rpx 40rpx 30rpx;  /* 左右30rpx,底部40rpx */
 	}
 
-	.category-list {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 20rpx;
-	}
-
-	.category-item {
+	.options-list {
 		display: flex;
 		flex-direction: column;
+		gap: 15rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.option-item {
+		display: flex;
 		align-items: center;
-		width: 150rpx;
-		padding: 20rpx 10rpx;
 		background-color: #fff;
 		border-radius: 12rpx;
-		border: 2rpx solid #e5e5e5;
-		transition: all 0.3s;
-	}
-
-	.category-item.selected {
-		border-color: #f33e54;
-		background-color: #fff0f1;
-	}
-
-	.category-icon {
-		font-size: 40rpx;
-		margin-bottom: 10rpx;
-	}
-
-	.category-name {
-		font-size: 26rpx;
-		color: #333;
-		text-align: center;
-	}
-
-	/* 悬赏设置区域 */
-	.reward-section {
-		margin-bottom: 40rpx;
-	}
-
-	.reward-switch {
-		margin-left: auto;
-	}
-
-	.reward-content {
-		margin-top: 20rpx;
-	}
-
-	.reward-options {
-		display: flex;
-		gap: 20rpx;
-		margin-bottom: 15rpx;
-	}
-
-	.reward-option {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
 		padding: 20rpx;
-		background-color: #fff;
-		border-radius: 12rpx;
 		border: 2rpx solid #e5e5e5;
-		min-width: 120rpx;
-		transition: all 0.3s;
+		box-sizing: border-box;  /* 确保padding和border不会导致元素溢出 */
 	}
 
-	.reward-option.selected {
-		border-color: #f33e54;
-		background-color: #fff0f1;
-	}
-
-	.reward-points {
-		font-size: 32rpx;
+	.option-number {
+		width: 50rpx;
+		height: 50rpx;
+		background-color: #f33e54;
+		color: white;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 28rpx;
 		font-weight: bold;
-		color: #f33e54;
-		margin-bottom: 5rpx;
+		margin-right: 20rpx;
+		flex-shrink: 0;
 	}
 
-	.reward-label {
-		font-size: 24rpx;
-		color: #666;
+	.option-input {
+		flex: 1;
+		font-size: 30rpx;
+		color: #333;
 	}
 
-	.reward-tip {
+	.option-actions {
+		margin-left: 20rpx;
+		flex-shrink: 0;
+	}
+
+	.action-icon {
+		width: 40rpx;
+		height: 40rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		font-size: 24rpx;
 		color: #999;
-		line-height: 1.4;
 	}
 
-	/* 图片上传区域 */
+	.delete-icon {
+		color: #f33e54;
+	}
+
+	.add-option-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 25rpx;
+		background-color: #fff;
+		border-radius: 12rpx;
+		border: 2rpx dashed #ccc;
+		box-sizing: border-box;  /* 确保padding和border不会导致元素溢出 */
+	}
+
+	.add-icon {
+		font-size: 36rpx;
+		color: #999;
+		margin-right: 10rpx;
+	}
+
+	.add-text {
+		font-size: 28rpx;
+		color: #999;
+	}
+
+	/* 图片上传区域 - 通过margin控制外部间距 */
 	.images-section {
-		margin-bottom: 40rpx;
+		margin: 0 30rpx 40rpx 30rpx;  /* 左右30rpx,底部40rpx */
 	}
 
 	.images-grid {
@@ -960,9 +977,9 @@
 		color: #999;
 	}
 
-	/* 标签选择区域 */
+	/* 标签选择区域 - 通过margin控制外部间距 */
 	.tags-section {
-		margin-bottom: 40rpx;
+		margin: 0 30rpx 40rpx 30rpx;  /* 左右30rpx,底部40rpx */
 	}
 
 	.selected-tags {
@@ -991,23 +1008,37 @@
 		font-weight: bold;
 	}
 
-	.hot-tags {
+	/* 可用标签列表样式 */
+	.available-tags {
 		background-color: #fff;
 		border-radius: 12rpx;
 		padding: 25rpx;
-	}
-
-	.tags-title {
-		font-size: 28rpx;
-		color: #333;
 		margin-bottom: 20rpx;
-		font-weight: bold;
-	}
+		box-sizing: border-box;  /* 确保padding不会导致元素溢出 */
 
-	.tags-list {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 15rpx;
+		.tags-title {
+			font-size: 28rpx;
+			color: #333;
+			margin-bottom: 20rpx;
+			font-weight: bold;
+		}
+
+		.tags-list {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 15rpx;
+		}
+
+		.no-result {
+			padding: 40rpx 0;
+			text-align: center;
+
+			.no-result-text {
+				display: block;
+				font-size: 28rpx;
+				color: #999;
+			}
+		}
 	}
 
 	.tag-item {
@@ -1016,6 +1047,7 @@
 		border-radius: 20rpx;
 		background-color: #fff;
 		transition: all 0.3s;
+		box-sizing: border-box;  /* 确保padding和border不会导致元素溢出 */
 	}
 
 	.tag-item.selected {
@@ -1032,15 +1064,16 @@
 		color: #f33e54;
 	}
 
-	/* 隐私设置区域 */
+	/* 隐私设置区域 - 通过margin控制外部间距 */
 	.privacy-section {
-		margin-bottom: 40rpx;
+		margin: 0 30rpx 40rpx 30rpx;  /* 左右30rpx,底部40rpx */
 	}
 
 	.privacy-options {
 		background-color: #fff;
 		border-radius: 12rpx;
 		padding: 25rpx;
+		box-sizing: border-box;  /* 确保padding不会导致元素溢出 */
 	}
 
 	.privacy-item {
@@ -1110,7 +1143,7 @@
 		text-align: center;
 	}
 
-	.question-preview {
+	.poll-preview {
 		background-color: #f8f8f8;
 		border-radius: 12rpx;
 		padding: 20rpx;
@@ -1120,27 +1153,20 @@
 		font-size: 30rpx;
 		font-weight: bold;
 		color: #333;
-		margin-bottom: 10rpx;
+		margin-bottom: 15rpx;
 		display: block;
 	}
 
-	.preview-category {
-		font-size: 24rpx;
-		color: #f33e54;
-		background-color: #fff0f1;
-		padding: 4rpx 12rpx;
-		border-radius: 10rpx;
-		margin-bottom: 10rpx;
-		display: inline-block;
+	.preview-options {
+		display: flex;
+		flex-direction: column;
+		gap: 8rpx;
 	}
 
-	.preview-reward {
-		font-size: 24rpx;
-		color: #ff9500;
-		background-color: #fff7e6;
-		padding: 4rpx 12rpx;
-		border-radius: 10rpx;
-		display: inline-block;
+	.preview-option {
+		font-size: 26rpx;
+		color: #666;
+		line-height: 1.5;
 	}
 
 	.modal-actions {

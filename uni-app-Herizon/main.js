@@ -1,7 +1,7 @@
 /**
  * Herizon女性社区uni-app入口文件
  *
- * 使用条件编译支持Vue2和Vue3版本：
+ * 使用条件编译支持Vue2和Vue3版本:
  * - #ifndef VUE3: 适用于Vue2版本的初始化
  * - #ifdef VUE3: 适用于Vue3版本的SSR应用初始化
  */
@@ -18,7 +18,7 @@ const app = new Vue({
 app.$mount()  // 挂载应用
 // #endif
 
-// Vue3版本初始化（支持SSR）
+// Vue3版本初始化(支持SSR)
 // #ifdef VUE3
 import {
 	createSSRApp

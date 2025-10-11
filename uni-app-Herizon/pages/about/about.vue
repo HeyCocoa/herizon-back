@@ -20,10 +20,10 @@
 			</view>
 			<view class="content-text">
 				<text class="description">
-					Herizon是一个专为女性职场人士打造的交流和成长平台。我们致力于为女性创造一个安全、包容、互助的社区环境，帮助每位女性在职场上发现自己的无限可能。
+					Herizon是一个专为女性职场人士打造的交流和成长平台。我们致力于为女性创造一个安全、包容、互助的社区环境,帮助每位女性在职场上发现自己的无限可能。
 				</text>
 				<text class="description">
-					在这里，你可以分享职场经验、探讨行业趋势、寻求建议和支持，与来自各行各业的优秀女性建立联系，共同成长。
+					在这里,你可以分享职场经验、探讨行业趋势、寻求建议和支持,与来自各行各业的优秀女性建立联系,共同成长。
 				</text>
 			</view>
 		</view>
@@ -39,28 +39,28 @@
 					<view class="value-icon">🚀</view>
 					<view class="value-content">
 						<text class="value-title">赋能成长</text>
-						<text class="value-desc">通过知识分享和经验交流，帮助每位女性实现职业突破</text>
+						<text class="value-desc">通过知识分享和经验交流,帮助每位女性实现职业突破</text>
 					</view>
 				</view>
 				<view class="value-item">
 					<view class="value-icon">🤝</view>
 					<view class="value-content">
 						<text class="value-title">互助支持</text>
-						<text class="value-desc">建立互相支持的网络，在职场挑战中提供温暖的力量</text>
+						<text class="value-desc">建立互相支持的网络,在职场挑战中提供温暖的力量</text>
 					</view>
 				</view>
 				<view class="value-item">
 					<view class="value-icon">🎯</view>
 					<view class="value-content">
 						<text class="value-title">专业品质</text>
-						<text class="value-desc">维护高质量的内容和讨论，创造有价值的交流体验</text>
+						<text class="value-desc">维护高质量的内容和讨论,创造有价值的交流体验</text>
 					</view>
 				</view>
 				<view class="value-item">
 					<view class="value-icon">🔒</view>
 					<view class="value-content">
 						<text class="value-title">安全包容</text>
-						<text class="value-desc">营造安全、包容的环境，让每个人都能自由表达观点</text>
+						<text class="value-desc">营造安全、包容的环境,让每个人都能自由表达观点</text>
 					</view>
 				</view>
 			</view>
@@ -108,7 +108,7 @@
 					<view class="timeline-content">
 						<text class="timeline-date">2025年Q1</text>
 						<text class="timeline-title">项目启动</text>
-						<text class="timeline-desc">确立产品定位，开始团队组建和技术选型</text>
+						<text class="timeline-desc">确立产品定位,开始团队组建和技术选型</text>
 					</view>
 				</view>
 				<view class="timeline-item">
@@ -116,7 +116,7 @@
 					<view class="timeline-content">
 						<text class="timeline-date">2025年Q2</text>
 						<text class="timeline-title">产品设计</text>
-						<text class="timeline-desc">完成用户调研，设计产品架构和用户体验</text>
+						<text class="timeline-desc">完成用户调研,设计产品架构和用户体验</text>
 					</view>
 				</view>
 				<view class="timeline-item">
@@ -124,7 +124,7 @@
 					<view class="timeline-content">
 						<text class="timeline-date">2025年Q3</text>
 						<text class="timeline-title">技术开发</text>
-						<text class="timeline-desc">核心功能开发，建立基础设施和安全体系</text>
+						<text class="timeline-desc">核心功能开发,建立基础设施和安全体系</text>
 					</view>
 				</view>
 				<view class="timeline-item">
@@ -132,7 +132,7 @@
 					<view class="timeline-content">
 						<text class="timeline-date">2025年Q4</text>
 						<text class="timeline-title">beta测试</text>
-						<text class="timeline-desc">内测阶段，收集用户反馈并优化产品体验</text>
+						<text class="timeline-desc">内测阶段,收集用户反馈并优化产品体验</text>
 					</view>
 				</view>
 			</view>
@@ -146,10 +146,10 @@
 			</view>
 			<view class="content-text">
 				<text class="description">
-					我们是一支充满激情和创新精神的团队，由来自技术、设计、产品和运营等不同背景的专业人士组成。团队成员都深刻理解女性在职场面临的挑战，致力于通过技术和产品创新来解决这些问题。
+					我们是一支充满激情和创新精神的团队,由来自技术、设计、产品和运营等不同背景的专业人士组成。团队成员都深刻理解女性在职场面临的挑战,致力于通过技术和产品创新来解决这些问题。
 				</text>
 				<text class="description">
-					我们相信多元化的团队能够创造更好的产品，每个人都为Herizon的发展贡献着独特的价值和视角。
+					我们相信多元化的团队能够创造更好的产品,每个人都为Herizon的发展贡献着独特的价值和视角。
 				</text>
 			</view>
 		</view>
@@ -200,13 +200,13 @@
 			</view>
 			<view class="content-text">
 				<text class="description">
-					感谢所有参与beta测试的用户，您们的反馈和建议对产品的完善起到了至关重要的作用。
+					感谢所有参与beta测试的用户,您们的反馈和建议对产品的完善起到了至关重要的作用。
 				</text>
 				<text class="description">
-					感谢开源社区的贡献者们，Herizon的技术栈建立在众多优秀的开源项目之上。
+					感谢开源社区的贡献者们,Herizon的技术栈建立在众多优秀的开源项目之上。
 				</text>
 				<text class="description">
-					感谢每一位相信Herizon理念并支持我们的朋友，让我们一起为女性职场发展创造更美好的未来！
+					感谢每一位相信Herizon理念并支持我们的朋友,让我们一起为女性职场发展创造更美好的未来!
 				</text>
 			</view>
 		</view>
@@ -226,7 +226,7 @@
 /**
  * 关于页面
  *
- * 功能特性：
+ * 功能特性:
  * - 应用介绍和价值观展示
  * - 功能特色说明
  * - 发展历程时间线
@@ -290,7 +290,7 @@ export default {
 		 * 打开隐私政策
 		 */
 		openPrivacy() {
-			// 可以跳转到隐私政策页面，或在服务条款页面中包含
+			// 可以跳转到隐私政策页面,或在服务条款页面中包含
 			uni.navigateTo({
 				url: '/pages/terms-of-service/terms-of-service?section=privacy'
 			})

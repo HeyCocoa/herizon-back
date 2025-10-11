@@ -24,7 +24,7 @@
 						<input
 							class="form-input"
 							type="text"
-							placeholder="请输入用户名（3-20个字符）"
+							placeholder="请输入用户名(3-20个字符)"
 							v-model="formData.username"
 							@input="onUsernameInput"
 							@blur="checkUsername"
@@ -59,7 +59,7 @@
 							<input
 								class="form-input"
 								:type="showPassword ? 'text' : 'password'"
-								placeholder="请输入密码（6-20个字符）"
+								placeholder="请输入密码(6-20个字符)"
 								v-model="formData.password"
 								@input="onPasswordInput"
 								:maxlength="20"
@@ -95,54 +95,12 @@
 						<input
 							class="form-input"
 							type="text"
-							placeholder="请输入昵称（用于显示）"
+							placeholder="请输入昵称(用于显示)"
 							v-model="formData.nickname"
 							@input="onNicknameInput"
 							:maxlength="20"
 						/>
 						<text class="input-hint">{{ nicknameMessage }}</text>
-					</view>
-
-					<!-- 身份认证问卷 -->
-					<view class="questionnaire-section">
-						<text class="section-title">身份认证</text>
-						<text class="section-desc">为了营造安全的女性社区环境，请完成简单的身份认证</text>
-
-						<view class="question-item">
-							<text class="question-text">您的职业身份是？</text>
-							<view class="options-list">
-								<label
-									class="option-item"
-									v-for="option in careerOptions"
-									:key="option.value"
-								>
-									<radio
-										:value="option.value"
-										:checked="formData.questionnaire.career === option.value"
-										@change="onCareerChange"
-									/>
-									<text class="option-text">{{ option.label }}</text>
-								</label>
-							</view>
-						</view>
-
-						<view class="question-item">
-							<text class="question-text">您希望在社区中获得什么？</text>
-							<view class="options-list">
-								<label
-									class="option-item"
-									v-for="option in purposeOptions"
-									:key="option.value"
-								>
-									<checkbox
-										:value="option.value"
-										:checked="formData.questionnaire.purposes.includes(option.value)"
-										@change="onPurposeChange"
-									/>
-									<text class="option-text">{{ option.label }}</text>
-								</label>
-							</view>
-						</view>
 					</view>
 
 					<!-- 用户协议 -->
@@ -174,7 +132,7 @@
 
 					<!-- 登录链接 -->
 					<view class="login-link">
-						<text class="link-text" @click="goToLogin">已有账号？立即登录</text>
+						<text class="link-text" @click="goToLogin">已有账号?立即登录</text>
 					</view>
 				</view>
 			</view>
@@ -186,11 +144,11 @@
 /**
  * 注册页面
  *
- * 功能特性：
+ * 功能特性:
  * - 完整的注册表单验证
  * - 用户名和邮箱可用性检查
- * - 身份认证问卷
  * - 用户协议确认
+ * - 新用户注册为体验用户(role=0),需要通过身份认证后升级为正式用户(role=1)
  */
 
 import { userApi } from '../../utils/api.js'
@@ -205,11 +163,7 @@ export default {
 				email: '',
 				password: '',
 				confirmPassword: '',
-				nickname: '',
-				questionnaire: {
-					career: '',           // 职业身份
-					purposes: []          // 使用目的
-				}
+				nickname: ''
 			},
 
 			// 验证状态
@@ -237,24 +191,7 @@ export default {
 			isRegistering: false,
 
 			// 跳转相关
-			redirectUrl: '',
-
-			// 选项数据
-			careerOptions: [
-				{ value: 'student', label: '学生' },
-				{ value: 'employee', label: '职场人士' },
-				{ value: 'entrepreneur', label: '创业者' },
-				{ value: 'freelancer', label: '自由职业者' },
-				{ value: 'other', label: '其他' }
-			],
-
-			purposeOptions: [
-				{ value: 'networking', label: '职场社交' },
-				{ value: 'learning', label: '技能学习' },
-				{ value: 'mentorship', label: '寻求指导' },
-				{ value: 'sharing', label: '经验分享' },
-				{ value: 'opportunities', label: '职业机会' }
-			]
+			redirectUrl: ''
 		}
 	},
 
@@ -263,13 +200,11 @@ export default {
 		 * 是否可以注册
 		 */
 		canRegister() {
-			return this.usernameValid &&
-				   this.emailValid &&
-				   this.passwordValid &&
-				   this.confirmPasswordValid &&
+			return this.formData.username.trim().length >= 3 &&
+				   this.formData.email.trim().length > 0 &&
+				   this.formData.password.length >= 6 &&
+				   this.formData.confirmPassword === this.formData.password &&
 				   this.formData.nickname.trim() &&
-				   this.formData.questionnaire.career &&
-				   this.formData.questionnaire.purposes.length > 0 &&
 				   this.agreedToTerms &&
 				   !this.isRegistering
 		}
@@ -318,8 +253,9 @@ export default {
 			}
 
 			try {
+				// request.js已解包Result对象,result直接是boolean值
 				const result = await userApi.checkUsername(username)
-				if (result.available) {
+				if (result) {
 					this.usernameValid = true
 					this.usernameMessage = '用户名可用'
 				} else {
@@ -328,7 +264,7 @@ export default {
 				}
 			} catch (error) {
 				this.usernameError = true
-				this.usernameMessage = '检查用户名失败，请重试'
+				this.usernameMessage = '检查用户名失败,请重试'
 			}
 		},
 
@@ -357,8 +293,9 @@ export default {
 			}
 
 			try {
+				// request.js已解包Result对象,result直接是boolean值
 				const result = await userApi.checkEmail(email)
-				if (result.available) {
+				if (result) {
 					this.emailValid = true
 					this.emailMessage = '邮箱可用'
 				} else {
@@ -367,7 +304,7 @@ export default {
 				}
 			} catch (error) {
 				this.emailError = true
-				this.emailMessage = '检查邮箱失败，请重试'
+				this.emailMessage = '检查邮箱失败,请重试'
 			}
 		},
 
@@ -452,21 +389,6 @@ export default {
 		},
 
 		/**
-		 * 职业选择改变
-		 */
-		onCareerChange(e) {
-			this.formData.questionnaire.career = e.detail.value
-		},
-
-		/**
-		 * 目的选择改变
-		 */
-		onPurposeChange(e) {
-			const purposes = e.detail.value
-			this.formData.questionnaire.purposes = purposes
-		},
-
-		/**
 		 * 协议同意状态改变
 		 */
 		onAgreementChange(e) {
@@ -504,23 +426,22 @@ export default {
 			this.isRegistering = true
 
 			try {
-				// 构建注册数据
+				// 构建注册数据(不包含questionnaire,新用户创建为体验用户 role=0)
 				const registerData = {
 					username: this.formData.username,
 					email: this.formData.email,
 					password: this.formData.password,
-					nickname: this.formData.nickname,
-					questionnaire: this.formData.questionnaire
+					nickname: this.formData.nickname
 				}
 
 				// 调用注册API
 				const result = await userApi.register(registerData)
 
-				// 注册成功，自动登录
+				// 注册成功,自动登录
 				handleLoginSuccess(result)
 
 				uni.showToast({
-					title: '注册成功！',
+					title: '注册成功!',
 					icon: 'success'
 				})
 
@@ -540,7 +461,7 @@ export default {
 			} catch (error) {
 				console.error('注册失败:', error)
 
-				let errorMessage = '注册失败，请重试'
+				let errorMessage = '注册失败,请重试'
 				if (error.message) {
 					errorMessage = error.message
 				}
@@ -571,9 +492,11 @@ export default {
 /* 页面容器 */
 .register-container {
 	min-height: 100vh;
+	width: 100%;
 	background-color: #f8f9fa;
 	display: flex;
 	flex-direction: column;
+	overflow-x: hidden;
 }
 
 /* 导航区域 */
@@ -606,8 +529,12 @@ export default {
 .form-section {
 	flex: 1;
 	padding: 40upx 30upx;
+	width: 100%;
+	min-height: 0;
+	box-sizing: border-box;
 
 	.form-container {
+		box-sizing: border-box;
 		background-color: #fff;
 		border-radius: 20upx;
 		padding: 40upx 30upx;
@@ -804,3 +731,5 @@ export default {
 	}
 }
 </style>
+
+

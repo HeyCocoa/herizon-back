@@ -25,7 +25,7 @@
 			<view class="content-section" v-if="currentTab === 'terms'">
 				<view class="document-header">
 					<text class="document-title">Herizon 用户服务协议</text>
-					<text class="update-date">最后更新：2025年{{ getCurrentMonth() }}月</text>
+					<text class="update-date">最后更新:2025年{{ getCurrentMonth() }}月</text>
 				</view>
 
 				<view class="content-body">
@@ -35,10 +35,10 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								欢迎使用Herizon！本服务协议（以下简称"协议"）是您与Herizon之间关于使用Herizon服务的法律协议。通过访问或使用我们的服务，您表示同意受本协议的约束。
+								欢迎使用Herizon!本服务协议(以下简称"协议")是您与Herizon之间关于使用Herizon服务的法律协议。通过访问或使用我们的服务,您表示同意受本协议的约束。
 							</text>
 							<text class="content-text">
-								如果您不同意本协议的任何条款，请不要使用我们的服务。我们保留随时修改本协议的权利，修改后的协议将在发布后立即生效。
+								如果您不同意本协议的任何条款,请不要使用我们的服务。我们保留随时修改本协议的权利,修改后的协议将在发布后立即生效。
 							</text>
 						</view>
 					</view>
@@ -49,7 +49,7 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								Herizon是一个专为女性职场人士设计的社交平台，提供以下服务：
+								Herizon是一个专为女性职场人士设计的社交平台,提供以下服务:
 							</text>
 							<view class="list-content">
 								<text class="list-item">• 内容发布与分享功能</text>
@@ -67,7 +67,7 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								要使用Herizon的全部功能，您需要创建一个账户。注册时，您必须：
+								要使用Herizon的全部功能,您需要创建一个账户。注册时,您必须:
 							</text>
 							<view class="list-content">
 								<text class="list-item">• 提供真实、准确的个人信息</text>
@@ -77,7 +77,7 @@
 								<text class="list-item">• 对账户下的所有活动承担责任</text>
 							</view>
 							<text class="content-text">
-								我们保留拒绝注册或终止账户的权利，特别是在违反社区规范的情况下。
+								我们保留拒绝注册或终止账户的权利,特别是在违反社区规范的情况下。
 							</text>
 						</view>
 					</view>
@@ -88,7 +88,7 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								使用Herizon时，您同意不会：
+								使用Herizon时,您同意不会:
 							</text>
 							<view class="list-content">
 								<text class="list-item">• 发布虚假、误导性或恶意内容</text>
@@ -99,7 +99,7 @@
 								<text class="list-item">• 违反任何适用的法律法规</text>
 							</view>
 							<text class="content-text">
-								我们致力于维护一个安全、包容的社区环境，对违反行为准则的用户将采取适当的措施，包括但不限于警告、限制功能或终止账户。
+								我们致力于维护一个安全、包容的社区环境,对违反行为准则的用户将采取适当的措施,包括但不限于警告、限制功能或终止账户。
 							</text>
 						</view>
 					</view>
@@ -110,7 +110,7 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								您保留对发布内容的所有权，但通过使用我们的服务，您授予Herizon非排他性、全球性、免版税的许可，以便我们：
+								您保留对发布内容的所有权,但通过使用我们的服务,您授予Herizon非排他性、全球性、免版税的许可,以便我们:
 							</text>
 							<view class="list-content">
 								<text class="list-item">• 存储、显示和分发您的内容</text>
@@ -118,7 +118,7 @@
 								<text class="list-item">• 防止滥用和维护平台安全</text>
 							</view>
 							<text class="content-text">
-								您有权随时删除自己的内容，但请注意，其他用户可能已经分享或引用了您的内容。
+								您有权随时删除自己的内容,但请注意,其他用户可能已经分享或引用了您的内容。
 							</text>
 						</view>
 					</view>
@@ -129,7 +129,7 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								我们保留随时修改、暂停或终止服务的权利，包括：
+								我们保留随时修改、暂停或终止服务的权利,包括:
 							</text>
 							<view class="list-content">
 								<text class="list-item">• 添加新功能或改进现有功能</text>
@@ -148,7 +148,7 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								Herizon服务按"现状"提供，我们不对以下情况承担责任：
+								Herizon服务按"现状"提供,我们不对以下情况承担责任:
 							</text>
 							<view class="list-content">
 								<text class="list-item">• 服务的连续性、可靠性或安全性</text>
@@ -165,11 +165,11 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								如果您对本服务协议有任何疑问或建议，请通过以下方式联系我们：
+								如果您对本服务协议有任何疑问或建议,请通过以下方式联系我们:
 							</text>
 							<view class="contact-info">
-								<text class="contact-item">邮箱：legal@herizon.com</text>
-								<text class="contact-item">客服：support@herizon.com</text>
+								<text class="contact-item">邮箱:legal@herizon.com</text>
+								<text class="contact-item">客服:support@herizon.com</text>
 							</view>
 						</view>
 					</view>
@@ -180,7 +180,7 @@
 			<view class="content-section" v-if="currentTab === 'privacy'">
 				<view class="document-header">
 					<text class="document-title">Herizon 隐私政策</text>
-					<text class="update-date">最后更新：2025年{{ getCurrentMonth() }}月</text>
+					<text class="update-date">最后更新:2025年{{ getCurrentMonth() }}月</text>
 				</view>
 
 				<view class="content-body">
@@ -190,18 +190,18 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								我们收集以下类型的信息以提供更好的服务：
+								我们收集以下类型的信息以提供更好的服务:
 							</text>
 							<view class="sub-section">
-								<text class="sub-title">个人信息：</text>
+								<text class="sub-title">个人信息:</text>
 								<view class="list-content">
-									<text class="list-item">• 注册时提供的基本信息（用户名、邮箱等）</text>
-									<text class="list-item">• 个人资料信息（头像、简介、职业信息等）</text>
+									<text class="list-item">• 注册时提供的基本信息(用户名、邮箱等)</text>
+									<text class="list-item">• 个人资料信息(头像、简介、职业信息等)</text>
 									<text class="list-item">• 身份认证时提供的额外信息</text>
 								</view>
 							</view>
 							<view class="sub-section">
-								<text class="sub-title">使用信息：</text>
+								<text class="sub-title">使用信息:</text>
 								<view class="list-content">
 									<text class="list-item">• 您发布的内容和互动记录</text>
 									<text class="list-item">• 浏览历史和搜索记录</text>
@@ -217,7 +217,7 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								我们使用收集的信息用于：
+								我们使用收集的信息用于:
 							</text>
 							<view class="list-content">
 								<text class="list-item">• 提供和改善服务功能</text>
@@ -235,13 +235,13 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								我们不会出售您的个人信息。我们可能在以下情况下分享信息：
+								我们不会出售您的个人信息。我们可能在以下情况下分享信息:
 							</text>
 							<view class="list-content">
 								<text class="list-item">• 获得您的明确同意</text>
 								<text class="list-item">• 遵守法律要求或法院命令</text>
 								<text class="list-item">• 保护我们或他人的合法权益</text>
-								<text class="list-item">• 与可信的服务提供商合作（在严格保密协议下）</text>
+								<text class="list-item">• 与可信的服务提供商合作(在严格保密协议下)</text>
 							</view>
 						</view>
 					</view>
@@ -252,7 +252,7 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								我们采取多种安全措施保护您的信息：
+								我们采取多种安全措施保护您的信息:
 							</text>
 							<view class="list-content">
 								<text class="list-item">• 数据加密传输和存储</text>
@@ -261,7 +261,7 @@
 								<text class="list-item">• 及时的安全更新和补丁</text>
 							</view>
 							<text class="content-text">
-								尽管我们采取了合理的安全措施，但请注意没有任何系统是完全安全的。
+								尽管我们采取了合理的安全措施,但请注意没有任何系统是完全安全的。
 							</text>
 						</view>
 					</view>
@@ -272,17 +272,17 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								关于您的个人信息，您有以下权利：
+								关于您的个人信息,您有以下权利:
 							</text>
 							<view class="list-content">
 								<text class="list-item">• 访问和查看我们收集的您的信息</text>
 								<text class="list-item">• 更正不准确或过时的信息</text>
-								<text class="list-item">• 删除您的个人信息（在某些条件下）</text>
+								<text class="list-item">• 删除您的个人信息(在某些条件下)</text>
 								<text class="list-item">• 限制或反对某些处理活动</text>
 								<text class="list-item">• 导出您的数据</text>
 							</view>
 							<text class="content-text">
-								要行使这些权利，请通过privacy@herizon.com联系我们。
+								要行使这些权利,请通过privacy@herizon.com联系我们。
 							</text>
 						</view>
 					</view>
@@ -293,7 +293,7 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								我们使用Cookie和类似技术来：
+								我们使用Cookie和类似技术来:
 							</text>
 							<view class="list-content">
 								<text class="list-item">• 保持您的登录状态</text>
@@ -302,7 +302,7 @@
 								<text class="list-item">• 提供个性化体验</text>
 							</view>
 							<text class="content-text">
-								您可以通过浏览器设置管理Cookie偏好，但这可能影响某些功能的使用。
+								您可以通过浏览器设置管理Cookie偏好,但这可能影响某些功能的使用。
 							</text>
 						</view>
 					</view>
@@ -313,7 +313,7 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								Herizon面向成年用户，我们不会故意收集13岁以下儿童的个人信息。如果我们发现收集了此类信息，将立即删除。
+								Herizon面向成年用户,我们不会故意收集13岁以下儿童的个人信息。如果我们发现收集了此类信息,将立即删除。
 							</text>
 						</view>
 					</view>
@@ -335,11 +335,11 @@
 						</view>
 						<view class="article-content">
 							<text class="content-text">
-								如果您对隐私政策有任何疑问，请联系我们：
+								如果您对隐私政策有任何疑问,请联系我们:
 							</text>
 							<view class="contact-info">
-								<text class="contact-item">隐私问题：privacy@herizon.com</text>
-								<text class="contact-item">一般咨询：support@herizon.com</text>
+								<text class="contact-item">隐私问题:privacy@herizon.com</text>
+								<text class="contact-item">一般咨询:support@herizon.com</text>
 							</view>
 						</view>
 					</view>
@@ -356,7 +356,7 @@
 /**
  * 服务协议页面
  *
- * 功能特性：
+ * 功能特性:
  * - 服务条款展示
  * - 隐私政策展示
  * - 标签切换功能

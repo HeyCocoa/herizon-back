@@ -5,29 +5,32 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.example.herizon.common.PageResult;
 import org.example.herizon.common.Result;
-import org.example.herizon.dto.AdminReportDTO;
 import org.example.herizon.dto.AdminUserDTO;
-import org.example.herizon.dto.AdminPostDTO;
+import org.example.herizon.dto.PostDTO;
+import org.example.herizon.dto.VerifyUserRequest;
 import org.example.herizon.service.AdminService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * 管理员控制器
+ * 管理员控制器（简化版 - 符合MVP原则）
  * <p>
- * 提供管理员专用的内容审核和管理功能，包括：
- * - 用户身份认证审核
- * - 举报内容审核和处理
- * - 用户管理（角色变更、封禁等）
- * - 内容管理（删除违规内容等）
- * - 平台数据统计
+ * 提供管理员专用的核心功能，包括：
+ * - 用户身份认证审核（体验用户升级为正式用户）
+ * - 平台基础数据统计
+ * <p>
+ * 标签管理功能复用TagController的现有API
  * <p>
  * 接口路径前缀：/api/admin
  * 注意：所有接口都需要管理员权限（role=2）
+ * <p>
+ * 简化说明（2025-10-02）：
+ * 删除了过度设计的功能（举报处理、帖子管理、用户管理等），
+ * 仅保留核心的用户审核和统计功能，符合最小可行产品原则
  *
  * @author Kokoa
  */
-@Tag(name = "管理员功能", description = "管理员专用的审核和管理功能API")
+@Tag(name = "管理员功能", description = "管理员专用的审核和管理功能API（简化版）")
 @RestController
 @RequestMapping("/admin")
 public class AdminController {
@@ -60,10 +63,12 @@ public class AdminController {
      * 审核用户身份认证申请
      * <p>
      * 管理员审核用户的身份认证申请，决定是否通过
+     * <p>
+     * 修复说明：将参数接收方式从@RequestParam改为@RequestBody，
+     * 以匹配前端发送的JSON请求体格式
      *
      * @param userId   待审核用户ID
-     * @param approved 是否通过：true=通过并升级为正式用户，false=拒绝申请
-     * @param reason   审核意见或拒绝原因
+     * @param request  审核请求参数（包含approved和reason字段）
      * @param adminId  管理员ID，从请求头获取
      * @return 审核结果
      */
@@ -71,99 +76,99 @@ public class AdminController {
     @PostMapping("/users/{userId}/verify")
     public Result<Void> verifyUser(
             @Parameter(description = "待审核用户ID") @PathVariable Long userId,
-            @Parameter(description = "是否通过审核") @RequestParam Boolean approved,
-            @Parameter(description = "审核意见") @RequestParam(required = false) String reason,
+            @Parameter(description = "审核请求参数") @RequestBody VerifyUserRequest request,
             @Parameter(description = "管理员ID") @RequestHeader("userId") Long adminId) {
 
-        adminService.verifyUser(userId, approved, reason, adminId);
+        adminService.verifyUser(userId, request.getApproved(), request.getReason(), adminId);
         return Result.success();
     }
 
     /**
-     * 获取待处理的举报列表
-     * <p>
-     * 查询所有待处理的用户举报，按时间倒序排列
+     * 管理员将普通用户提升为管理员
      *
-     * @param current 当前页码，默认1
-     * @param size    每页大小，默认10
-     * @param adminId 管理员ID，从请求头获取
-     * @return 待处理举报列表
+     * @param userId  被提升的用户ID
+     * @param adminId 操作管理员ID
+     * @return 操作结果
      */
-    @Operation(summary = "获取待处理举报列表", description = "查询所有待处理的用户举报")
-    @GetMapping("/reports/pending")
-    public Result<PageResult<AdminReportDTO>> getPendingReports(
+    @Operation(summary = "将用户设为管理员", description = "管理员赋予其他用户管理员权限")
+    @PostMapping("/users/{userId}/promote")
+    public Result<Void> promoteUser(
+            @Parameter(description = "目标用户ID") @PathVariable Long userId,
+            @Parameter(description = "管理员ID") @RequestHeader("userId") Long adminId) {
+
+        adminService.promoteUserToAdmin(userId, adminId);
+        return Result.success();
+    }
+
+    /**
+     * 管理员删除用户（逻辑删除）
+     *
+     * @param userId  被删除的用户ID
+     * @param adminId 操作管理员ID
+     * @return 操作结果
+     */
+    @Operation(summary = "删除用户", description = "管理员逻辑删除指定用户，并同步清理其帖子")
+    @DeleteMapping("/users/{userId}")
+    public Result<Void> deleteUser(
+            @Parameter(description = "目标用户ID") @PathVariable Long userId,
+            @Parameter(description = "管理员ID") @RequestHeader("userId") Long adminId) {
+
+        adminService.deleteUser(userId, adminId);
+        return Result.success();
+    }
+
+    /**
+     * 管理员分页查询所有用户
+     *
+     * @param current 当前页码
+     * @param size    每页大小
+     * @param adminId 管理员ID
+     * @return 用户分页列表
+     */
+    @Operation(summary = "查询全量用户", description = "管理员分页查看所有用户信息")
+    @GetMapping("/users")
+    public Result<PageResult<AdminUserDTO>> getAllUsers(
             @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") Integer current,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size,
             @Parameter(description = "管理员ID") @RequestHeader("userId") Long adminId) {
 
-        PageResult<AdminReportDTO> result = adminService.getPendingReports(current, size, adminId);
+        PageResult<AdminUserDTO> result = adminService.getAllUsers(current, size, adminId);
         return Result.success(result);
     }
 
     /**
-     * 处理举报
-     * <p>
-     * 管理员处理用户举报，决定是否删除被举报内容
+     * 管理员分页查询所有帖子
      *
-     * @param reportId 举报记录ID
-     * @param action   处理动作：approve=删除被举报内容，reject=拒绝举报
-     * @param reason   处理理由
-     * @param adminId  管理员ID，从请求头获取
-     * @return 处理结果
+     * @param current 当前页码
+     * @param size    每页大小
+     * @param adminId 管理员ID
+     * @return 分页帖子列表
      */
-    @Operation(summary = "处理举报", description = "管理员处理用户举报，决定是否删除被举报内容")
-    @PostMapping("/reports/{reportId}/handle")
-    public Result<Void> handleReport(
-            @Parameter(description = "举报记录ID") @PathVariable Long reportId,
-            @Parameter(description = "处理动作") @RequestParam String action,
-            @Parameter(description = "处理理由") @RequestParam(required = false) String reason,
+    @Operation(summary = "查询全站帖子", description = "管理员分页查看所有用户发布的帖子")
+    @GetMapping("/posts")
+    public Result<PageResult<PostDTO>> getAllPosts(
+            @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") Integer current,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size,
             @Parameter(description = "管理员ID") @RequestHeader("userId") Long adminId) {
 
-        adminService.handleReport(reportId, action, reason, adminId);
-        return Result.success();
+        PageResult<PostDTO> result = adminService.getAllPosts(current, size, adminId);
+        return Result.success(result);
     }
 
     /**
-     * 管理员删除帖子
-     * <p>
-     * 管理员可以直接删除违规帖子，并可选择发布违规公示
+     * 管理员删除任意用户的帖子
      *
-     * @param postId         帖子ID
-     * @param reason         删除原因
-     * @param publishNotice  是否发布违规公示帖
-     * @param adminId        管理员ID，从请求头获取
-     * @return 删除结果
+     * @param postId  帖子ID
+     * @param adminId 操作管理员ID
+     * @return 操作结果
      */
-    @Operation(summary = "管理员删除帖子", description = "管理员直接删除违规帖子，可选择发布违规公示")
+    @Operation(summary = "删除帖子", description = "管理员删除任意用户的帖子，采用逻辑删除")
     @DeleteMapping("/posts/{postId}")
     public Result<Void> deletePost(
             @Parameter(description = "帖子ID") @PathVariable Long postId,
-            @Parameter(description = "删除原因") @RequestParam String reason,
-            @Parameter(description = "是否发布违规公示") @RequestParam(defaultValue = "false") Boolean publishNotice,
             @Parameter(description = "管理员ID") @RequestHeader("userId") Long adminId) {
 
-        adminService.deletePost(postId, reason, publishNotice, adminId);
-        return Result.success();
-    }
-
-    /**
-     * 修改用户角色
-     * <p>
-     * 管理员可以修改用户的角色（体验用户、正式用户、管理员）
-     *
-     * @param userId  目标用户ID
-     * @param newRole 新角色：0=体验用户，1=正式用户，2=管理员
-     * @param adminId 管理员ID，从请求头获取
-     * @return 修改结果
-     */
-    @Operation(summary = "修改用户角色", description = "管理员修改用户的角色权限")
-    @PutMapping("/users/{userId}/role")
-    public Result<Void> changeUserRole(
-            @Parameter(description = "目标用户ID") @PathVariable Long userId,
-            @Parameter(description = "新角色") @RequestParam Integer newRole,
-            @Parameter(description = "管理员ID") @RequestHeader("userId") Long adminId) {
-
-        adminService.changeUserRole(userId, newRole, adminId);
+        adminService.deletePost(postId, adminId);
         return Result.success();
     }
 
@@ -182,49 +187,4 @@ public class AdminController {
         return Result.success(statistics);
     }
 
-    /**
-     * 获取所有用户列表
-     * <p>
-     * 管理员查看所有用户，支持按角色筛选
-     *
-     * @param current 当前页码，默认1
-     * @param size    每页大小，默认20
-     * @param role    角色筛选，可选
-     * @param adminId 管理员ID，从请求头获取
-     * @return 用户列表
-     */
-    @Operation(summary = "获取所有用户列表", description = "管理员查看所有用户，支持按角色筛选")
-    @GetMapping("/users")
-    public Result<PageResult<AdminUserDTO>> getAllUsers(
-            @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") Integer current,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "20") Integer size,
-            @Parameter(description = "角色筛选") @RequestParam(required = false) Integer role,
-            @Parameter(description = "管理员ID") @RequestHeader("userId") Long adminId) {
-
-        PageResult<AdminUserDTO> result = adminService.getAllUsers(current, size, role, adminId);
-        return Result.success(result);
-    }
-
-    /**
-     * 获取所有帖子列表
-     * <p>
-     * 管理员查看所有帖子，支持按状态筛选
-     *
-     * @param current 当前页码，默认1
-     * @param size    每页大小，默认20
-     * @param status  状态筛选，可选
-     * @param adminId 管理员ID，从请求头获取
-     * @return 帖子列表
-     */
-    @Operation(summary = "获取所有帖子列表", description = "管理员查看所有帖子，支持按状态筛选")
-    @GetMapping("/posts")
-    public Result<PageResult<AdminPostDTO>> getAllPosts(
-            @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") Integer current,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "20") Integer size,
-            @Parameter(description = "状态筛选") @RequestParam(required = false) Integer status,
-            @Parameter(description = "管理员ID") @RequestHeader("userId") Long adminId) {
-
-        PageResult<AdminPostDTO> result = adminService.getAllPosts(current, size, status, adminId);
-        return Result.success(result);
-    }
 }

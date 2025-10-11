@@ -42,13 +42,17 @@
 					<text class="post-summary" v-if="post.summary">{{ post.summary }}</text>
 				</view>
 
-				<!-- 帖子图片 -->
-				<view class="post-images" v-if="post.images && post.images.length > 0">
+				<!-- 帖子图片 - Performance: Lazy loading enabled -->
+				<view class="post-images" v-if="post.imageUrls && post.imageUrls.length > 0">
 					<image class="post-image"
-						   v-for="(image, index) in post.images.slice(0, 3)"
+						   v-for="(img, index) in post.imageUrls.slice(0, 3)"
 						   :key="index"
-						   :src="image"
-						   mode="aspectFill"></image>
+						   :src="img"
+						   mode="aspectFill"
+						   lazy-load
+						   :class="{ 'image-loaded': imageLoaded[`${post.id}_${index}`] }"
+						   @load="onImageLoad(post.id, index)"
+						   @error="onImageError(post.id, index)"></image>
 				</view>
 
 				<!-- 帖子统计 -->
@@ -93,11 +97,15 @@
 /**
  * 标签帖子页面
  *
- * 功能特性：
+ * 功能特性:
  * - 显示特定标签下的所有帖子
  * - 支持下拉刷新和上拉加载更多
  * - 点击帖子进入详情页
- * - 显示帖子统计信息（点赞、评论、浏览数）
+ * - 显示帖子统计信息(点赞、评论、浏览数)
+ *
+ * Performance Optimizations (2025-10-04):
+ * - Image lazy loading for better performance
+ * - Memory cleanup on page unload
  */
 
 import { postApi } from '../../utils/api.js'
@@ -125,7 +133,11 @@ export default {
 			isLoading: false,
 			isLoadingMore: false,
 			isRefreshing: false,
-			hasMore: true
+			hasMore: true,
+
+			// Performance: Image lazy loading state
+			imageLoaded: {},
+			imageErrors: {}
 		}
 	},
 
@@ -134,12 +146,25 @@ export default {
 		const systemInfo = uni.getSystemInfoSync()
 		this.statusBarHeight = systemInfo.statusBarHeight || 0
 
-		// 获取页面参数
+		// 获取页面参数,防止参数缺失导致API调用失败
+		if (!options.tagId) {
+			uni.showToast({ title: '标签不存在', icon: 'error' })
+			uni.navigateBack()
+			return
+		}
+
 		this.tagId = options.tagId
 		this.tagName = decodeURIComponent(options.tagName || '')
 
 		// 加载帖子列表
 		this.loadPostList(true)
+	},
+
+	onUnload() {
+		// Performance: Memory cleanup
+		this.postList = []
+		this.imageLoaded = {}
+		this.imageErrors = {}
 	},
 
 	methods: {
@@ -161,72 +186,63 @@ export default {
 			}
 
 			try {
+				// Defensive validation: ensure tagId exists
+				if (!this.tagId) {
+					throw new Error('tagId is required')
+				}
+
 				const params = {
 					current: this.pageParams.current,
-					size: this.pageParams.size,
-					tagId: this.tagId
+					size: this.pageParams.size
 				}
 
-				const response = await postApi.getPostsByTag(params)
+				// 修复BUG-004: getPostsByTag需要tagId作为第一个参数
+				// API定义: getPostsByTag(tagId, params)
+				const result = await postApi.getPostsByTag(this.tagId, params)
+				const currentPage = this.pageParams.current
+				const pageSize = this.pageParams.size || 1
+				const records = result.records || []
 
 				if (reset) {
-					this.postList = response.records || []
+					this.postList = records
 				} else {
-					this.postList.push(...(response.records || []))
+					this.postList.push(...records)
 				}
 
-				this.hasMore = this.pageParams.current < (response.pages || 1)
-				this.pageParams.current++
+				const pagesRaw = typeof result.pages !== 'undefined' ? result.pages : undefined
+				let totalPages = Number(pagesRaw)
+				if (!Number.isFinite(totalPages) || totalPages <= 0) {
+					const totalRaw = typeof result.total !== 'undefined' ? result.total : undefined
+					const total = Number(totalRaw)
+					if (Number.isFinite(total) && total > 0) {
+						totalPages = Math.max(1, Math.ceil(total / pageSize))
+					} else if (records.length === pageSize) {
+						totalPages = currentPage + 1
+					} else {
+						totalPages = currentPage
+					}
+				}
+
+				this.hasMore = currentPage < totalPages
+				this.pageParams.current = this.hasMore ? currentPage + 1 : Math.max(totalPages, 1)
 
 			} catch (error) {
 				console.error('加载帖子列表失败:', error)
-				// API调用失败时使用模拟数据
-				this.loadMockData(reset)
+
+				// API调用失败时显示错误提示,清空列表
+				uni.showToast({
+					title: '网络请求失败,请稍后重试',
+					icon: 'none',
+					duration: 2000
+				})
+
+				this.postList = []
+				this.hasMore = false
 			} finally {
 				this.isLoading = false
 				this.isLoadingMore = false
 				this.isRefreshing = false
 			}
-		},
-
-		/**
-		 * 加载模拟数据
-		 */
-		loadMockData(reset) {
-			const mockPosts = [
-				{
-					id: 1,
-					title: `${this.tagName}相关的精彩内容`,
-					summary: '这是一篇关于职场发展的优质内容，值得深入阅读和讨论。',
-					username: '职场达人',
-					userAvatar: '/static/img/default-avatar.png',
-					createdAt: new Date().toISOString(),
-					likeCount: 42,
-					commentCount: 15,
-					viewCount: 328,
-					images: []
-				},
-				{
-					id: 2,
-					title: `深度探讨${this.tagName}的实用技巧`,
-					summary: '分享一些实用的职场经验和技巧，希望对大家有帮助。',
-					username: '经验分享者',
-					userAvatar: '/static/img/default-avatar.png',
-					createdAt: new Date(Date.now() - 3600000).toISOString(),
-					likeCount: 28,
-					commentCount: 8,
-					viewCount: 156,
-					images: []
-				}
-			]
-
-			if (reset) {
-				this.postList = mockPosts
-			} else {
-				this.postList.push(...mockPosts)
-			}
-
-			this.hasMore = false
 		},
 
 		/**
@@ -260,6 +276,20 @@ export default {
 			uni.navigateTo({
 				url: `/pages/post-detail/post-detail?postId=${post.id}`
 			})
+		},
+
+		/**
+		 * Performance: Image lazy loading event handlers
+		 */
+		onImageLoad(postId, index) {
+			const key = `${postId}_${index}`
+			this.$set(this.imageLoaded, key, true)
+		},
+
+		onImageError(postId, index) {
+			const key = `${postId}_${index}`
+			this.$set(this.imageErrors, key, true)
+			console.warn(`图片加载失败: Post ${postId}, Image ${index}`)
 		},
 
 		/**
@@ -419,6 +449,13 @@ export default {
 	width: 80px;
 	height: 80px;
 	border-radius: 8px;
+	background-color: #f5f5f5;
+	opacity: 0.6;
+	transition: opacity 0.3s ease-in-out;
+}
+
+.post-image.image-loaded {
+	opacity: 1;
 }
 
 .post-stats {

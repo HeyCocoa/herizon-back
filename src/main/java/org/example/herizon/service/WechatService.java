@@ -59,7 +59,6 @@ public class WechatService {
         try {
             // 构建API请求URL
             String url = wechatConfig.buildCode2SessionUrl(code);
-            System.out.println("调用微信API: " + url.replace(wechatConfig.getAppSecret(), wechatConfig.getMaskedAppSecret()));
 
             // 调用微信API
             responseBody = restTemplate.getForObject(url, String.class);
@@ -67,8 +66,6 @@ public class WechatService {
             if (responseBody == null || responseBody.trim().isEmpty()) {
                 throw new RuntimeException("微信API返回数据为空");
             }
-
-            System.out.println("微信API响应: " + responseBody);
 
             // 解析JSON响应
             Code2SessionResponse response = objectMapper.readValue(responseBody, Code2SessionResponse.class);
@@ -83,7 +80,6 @@ public class WechatService {
                 throw new RuntimeException("微信API返回数据不完整：openid或session_key为空");
             }
 
-            System.out.println("微信code2session调用成功，openid: " + response.getOpenid());
             return response;
 
         } catch (JsonProcessingException e) {

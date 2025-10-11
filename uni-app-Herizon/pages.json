@@ -1,6 +1,6 @@
 {
 	"pages": [
-		//pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		//pages数组中第一项表示应用启动页,参考:https://uniapp.dcloud.io/collocation/pages
 		{
 			"path": "pages/tabbar/tabbar-1/tabbar-1",
 			"style": {
@@ -105,6 +105,63 @@
 			}
 		},
 		{
+			"path": "pages/edit-profile/edit-profile",
+			"style": {
+				"navigationBarTitleText": "编辑资料",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/admin/admin-main/admin-main",
+			"style": {
+				"navigationBarTitleText": "管理后台",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/admin/user-management/user-management",
+			"style": {
+				"navigationBarTitleText": "用户管理",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/admin/post-management/post-management",
+			"style": {
+				"navigationBarTitleText": "帖子管理",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+
+		{
+			"path": "pages/admin/user-audit/user-audit",
+			"style": {
+				"navigationBarTitleText": "用户审核",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/admin/tag-management/tag-management",
+			"style": {
+				"navigationBarTitleText": "标签管理",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/admin/feedback-management/feedback-management",
+			"style": {
+				"navigationBarTitleText": "用户反馈",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
 			"path": "pages/search/search",
 			"style": {
 				"navigationStyle": "custom"
@@ -163,15 +220,6 @@
 			}
 		},
 		{
-			"path": "pages/help-center/help-center",
-			"style": {
-				"navigationBarTitleText": "帮助中心",
-				"navigationBarBackgroundColor": "#ffffff",
-				"navigationBarTextStyle": "black",
-				"enablePullDownRefresh": true
-			}
-		},
-		{
 			"path": "pages/about/about",
 			"style": {
 				"navigationBarTitleText": "关于Herizon",
@@ -195,6 +243,54 @@
 				"navigationBarBackgroundColor": "#ffffff",
 				"navigationBarTextStyle": "black",
 				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/tools/mbti-test/mbti-test",
+			"style": {
+				"navigationBarTitleText": "MBTI 性格测试",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/tools/career-assessment/career-assessment",
+			"style": {
+				"navigationBarTitleText": "职业兴趣测评",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/tools/tax-calculator/tax-calculator",
+			"style": {
+				"navigationBarTitleText": "个税计算器",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/tools/interview-questions/interview-questions",
+			"style": {
+				"navigationBarTitleText": "面试题库",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/tools/time-matrix/time-matrix",
+			"style": {
+				"navigationBarTitleText": "时间管理矩阵",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/tools/stress-assessment/stress-assessment",
+			"style": {
+				"navigationBarTitleText": "职场压力测评",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
 			}
 		}
 	],

@@ -3,13 +3,12 @@ package org.example.herizon.service;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import org.example.herizon.common.PageResult;
-import org.example.herizon.dto.AdminPostDTO;
-import org.example.herizon.dto.AdminReportDTO;
 import org.example.herizon.dto.AdminUserDTO;
-import org.example.herizon.entity.Post;
+import org.example.herizon.dto.PostDTO;
 import org.example.herizon.entity.User;
-import org.example.herizon.entity.UserAction;
+import org.example.herizon.entity.Post;
 import org.example.herizon.mapper.PostMapper;
+import org.example.herizon.mapper.TagMapper;
 import org.example.herizon.mapper.UserActionMapper;
 import org.example.herizon.mapper.UserMapper;
 import org.springframework.beans.BeanUtils;
@@ -24,7 +23,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 管理员服务类
+ * 管理员服务类（简化版 - 符合MVP原则）
+ * <p>
+ * 简化说明（2025-10-02）：
+ * 删除了过度设计的功能（举报处理、帖子管理、用户管理等），
+ * 仅保留核心的用户审核和统计功能
  *
  * @author Kokoa
  */
@@ -39,6 +42,12 @@ public class AdminService {
 
     @Autowired
     private UserActionMapper userActionMapper;
+
+    @Autowired
+    private TagMapper tagMapper;
+
+    @Autowired
+    private PostService postService;
 
     /**
      * 验证管理员权限
@@ -90,187 +99,170 @@ public class AdminService {
     }
 
     /**
-     * 获取待处理举报列表
+     * 管理员将用户提升为管理员角色
+     *
+     * @param targetUserId 目标用户ID
+     * @param adminId      操作管理员ID
      */
-    public PageResult<AdminReportDTO> getPendingReports(Integer current, Integer size, Long adminId) {
+    public void promoteUserToAdmin(Long targetUserId, Long adminId) {
+        validateAdminPermission(adminId);
+
+        if (targetUserId == null) {
+            throw new RuntimeException("用户ID不能为空");
+        }
+
+        User targetUser = userMapper.selectOneById(targetUserId);
+        if (targetUser == null || (targetUser.getDeleted() != null && targetUser.getDeleted() == 1)) {
+            throw new RuntimeException("用户不存在或已被删除");
+        }
+
+        if (targetUser.getRole() != null && targetUser.getRole() == 2) {
+            return;
+        }
+
+        targetUser.setRole(2);
+        targetUser.setUpdatedAt(LocalDateTime.now());
+        userMapper.update(targetUser);
+    }
+
+    /**
+     * 管理员删除用户（逻辑删除）
+     *
+     * @param targetUserId 目标用户ID
+     * @param adminId      操作管理员ID
+     */
+    @Transactional
+    public void deleteUser(Long targetUserId, Long adminId) {
+        validateAdminPermission(adminId);
+
+        if (targetUserId == null) {
+            throw new RuntimeException("用户ID不能为空");
+        }
+        if (targetUserId.equals(adminId)) {
+            throw new RuntimeException("不能删除自己的账号");
+        }
+
+        User targetUser = userMapper.selectOneById(targetUserId);
+        if (targetUser == null || (targetUser.getDeleted() != null && targetUser.getDeleted() == 1)) {
+            throw new RuntimeException("用户不存在或已被删除");
+        }
+
+        targetUser.setDeleted(1);
+        targetUser.setUpdatedAt(LocalDateTime.now());
+        userMapper.update(targetUser);
+
+        QueryWrapper postQuery = QueryWrapper.create()
+                .where("user_id = ?", targetUserId)
+                .and("deleted = 0");
+        List<Post> posts = postMapper.selectListByQuery(postQuery);
+        for (Post post : posts) {
+            postService.deletePost(post.getId(), adminId);
+        }
+    }
+
+    /**
+     * 管理员分页查询所有用户
+     *
+     * @param current 当前页码
+     * @param size    每页大小
+     * @param adminId 管理员ID
+     * @return 分页的用户列表
+     */
+    public PageResult<AdminUserDTO> getAllUsers(Integer current, Integer size, Long adminId) {
         validateAdminPermission(adminId);
 
         QueryWrapper queryWrapper = QueryWrapper.create()
-                .where("action_type = 3")
-                .and("deleted = 0")
+                .where("deleted = 0")
                 .orderBy("created_at DESC");
 
-        Page<UserAction> page = userActionMapper.paginate(Page.of(current, size), queryWrapper);
-        List<AdminReportDTO> reportDTOs = page.getRecords().stream()
-                .map(this::convertToAdminReportDTO)
+        Page<User> page = userMapper.paginate(Page.of(current, size), queryWrapper);
+        List<AdminUserDTO> users = page.getRecords().stream()
+                .map(this::convertToAdminUserDTO)
                 .collect(Collectors.toList());
 
-        return PageResult.of(reportDTOs, page.getTotalRow(), (long) current, (long) size);
+        return PageResult.of(users, page.getTotalRow(), (long) current, (long) size);
     }
 
     /**
-     * 处理举报
+     * 管理员分页查询所有帖子
+     *
+     * @param current 当前页码
+     * @param size    每页大小
+     * @param adminId 管理员ID
+     * @return 分页的帖子列表
      */
-    @Transactional
-    public void handleReport(Long reportId, String action, String reason, Long adminId) {
+    public PageResult<PostDTO> getAllPosts(Integer current, Integer size, Long adminId) {
         validateAdminPermission(adminId);
-
-        UserAction report = userActionMapper.selectOneById(reportId);
-        if (report == null) {
-            throw new RuntimeException("举报记录不存在");
-        }
-
-        if ("approve".equals(action)) {
-            // 删除被举报内容
-            if ("post".equals(report.getTargetType())) {
-                Post post = postMapper.selectOneById(report.getTargetId());
-                if (post != null) {
-                    post.setStatus(1);
-                    postMapper.update(post);
-                }
-            }
-        }
-
-        // 标记举报已处理
-        report.setDeleted(1);
-        userActionMapper.update(report);
+        return postService.getAllPostsForAdmin(current, size);
     }
 
     /**
-     * 删除帖子
+     * 管理员删除帖子
+     *
+     * @param postId  帖子ID
+     * @param adminId 管理员ID
      */
-    @Transactional
-    public void deletePost(Long postId, String reason, Boolean publishNotice, Long adminId) {
+    public void deletePost(Long postId, Long adminId) {
         validateAdminPermission(adminId);
-
-        Post post = postMapper.selectOneById(postId);
-        if (post == null) {
-            throw new RuntimeException("帖子不存在");
-        }
-
-        post.setStatus(1);
-        postMapper.update(post);
-
-        if (publishNotice) {
-            // 创建违规公示帖
-            Post noticePost = new Post();
-            noticePost.setUserId(adminId);
-            noticePost.setTitle("违规内容处理公示");
-            noticePost.setContent("违规内容已被删除，原因：" + reason);
-            noticePost.setPostType(2);
-            noticePost.setCreatedAt(LocalDateTime.now());
-            noticePost.setUpdatedAt(LocalDateTime.now());
-            postMapper.insert(noticePost);
-        }
+        postService.deletePost(postId, adminId);
     }
 
     /**
-     * 修改用户角色
-     */
-    @Transactional
-    public void changeUserRole(Long userId, Integer newRole, Long adminId) {
-        validateAdminPermission(adminId);
-
-        User user = userMapper.selectOneById(userId);
-        if (user == null) {
-            throw new RuntimeException("用户不存在");
-        }
-
-        user.setRole(newRole);
-        user.setUpdatedAt(LocalDateTime.now());
-        userMapper.update(user);
-    }
-
-    /**
-     * 获取平台统计数据
+     * 获取平台统计数据（简化版 - 符合MVP原则）
+     * <p>
+     * 简化说明（2025-10-02）：
+     * 删除了复杂的统计逻辑，仅保留3个核心统计指标，
+     * 符合最小可行产品原则
+     *
+     * @param adminId 管理员ID
+     * @return 基础统计数据（pendingUsers, totalTags, totalPosts）
      */
     public Object getStatistics(Long adminId) {
         validateAdminPermission(adminId);
 
         Map<String, Object> stats = new HashMap<>();
 
-        // 用户统计
-        long totalUsers = userMapper.selectCountByQuery(QueryWrapper.create().where("deleted = 0"));
-        long trialUsers = userMapper.selectCountByQuery(QueryWrapper.create().where("role = 0 AND deleted = 0"));
-        long verifiedUsers = userMapper.selectCountByQuery(QueryWrapper.create().where("role = 1 AND deleted = 0"));
+        // 1. 待审核用户数（role=0 且有问卷数据）
+        long pendingUsers = userMapper.selectCountByQuery(
+                QueryWrapper.create()
+                        .where("role = 0")
+                        .and("questionnaire_data IS NOT NULL")
+                        .and("deleted = 0")
+        );
 
-        // 帖子统计
-        long totalPosts = postMapper.selectCountByQuery(QueryWrapper.create().where("deleted = 0"));
-        long activePosts = postMapper.selectCountByQuery(QueryWrapper.create().where("status = 0 AND deleted = 0"));
+        // 2. 标签总数
+        long totalTags = tagMapper.selectCountByQuery(
+                QueryWrapper.create().where("deleted = 0")
+        );
 
-        // 举报统计
-        long pendingReports = userActionMapper.selectCountByQuery(
-            QueryWrapper.create().where("action_type = 3 AND deleted = 0"));
+        // 3. 帖子总数
+        long totalPosts = postMapper.selectCountByQuery(
+                QueryWrapper.create().where("deleted = 0")
+        );
 
-        stats.put("totalUsers", totalUsers);
-        stats.put("trialUsers", trialUsers);
-        stats.put("verifiedUsers", verifiedUsers);
+        stats.put("pendingUsers", pendingUsers);
+        stats.put("totalTags", totalTags);
         stats.put("totalPosts", totalPosts);
-        stats.put("activePosts", activePosts);
-        stats.put("pendingReports", pendingReports);
 
         return stats;
-    }
-
-    /**
-     * 获取所有用户
-     */
-    public PageResult<AdminUserDTO> getAllUsers(Integer current, Integer size, Integer role, Long adminId) {
-        validateAdminPermission(adminId);
-
-        QueryWrapper queryWrapper = QueryWrapper.create().where("deleted = 0");
-        if (role != null) {
-            queryWrapper.and("role = ?", role);
-        }
-        queryWrapper.orderBy("created_at DESC");
-
-        Page<User> page = userMapper.paginate(Page.of(current, size), queryWrapper);
-        List<AdminUserDTO> userDTOs = page.getRecords().stream()
-                .map(this::convertToAdminUserDTO)
-                .collect(Collectors.toList());
-
-        return PageResult.of(userDTOs, page.getTotalRow(), (long) current, (long) size);
-    }
-
-    /**
-     * 获取所有帖子
-     */
-    public PageResult<AdminPostDTO> getAllPosts(Integer current, Integer size, Integer status, Long adminId) {
-        validateAdminPermission(adminId);
-
-        QueryWrapper queryWrapper = QueryWrapper.create().where("deleted = 0");
-        if (status != null) {
-            queryWrapper.and("status = ?", status);
-        }
-        queryWrapper.orderBy("created_at DESC");
-
-        Page<Post> page = postMapper.paginate(Page.of(current, size), queryWrapper);
-        List<AdminPostDTO> postDTOs = page.getRecords().stream()
-                .map(this::convertToAdminPostDTO)
-                .collect(Collectors.toList());
-
-        return PageResult.of(postDTOs, page.getTotalRow(), (long) current, (long) size);
     }
 
     private AdminUserDTO convertToAdminUserDTO(User user) {
         AdminUserDTO dto = new AdminUserDTO();
         BeanUtils.copyProperties(user, dto);
         dto.setIsPendingVerification(user.getRole() == 0 && user.getQuestionnaireData() != null);
+
+        Integer role = user.getRole();
+        if (role != null) {
+            String roleDescription;
+            switch (role) {
+                case 2 -> roleDescription = "管理员";
+                case 1 -> roleDescription = "正式用户";
+                default -> roleDescription = "体验用户";
+            }
+            dto.setRoleDescription(roleDescription);
+        }
         return dto;
     }
 
-    private AdminReportDTO convertToAdminReportDTO(UserAction report) {
-        AdminReportDTO dto = new AdminReportDTO();
-        dto.setReportId(report.getId());
-        dto.setTargetId(report.getTargetId());
-        dto.setTargetType(report.getTargetType());
-        dto.setReportTime(report.getCreatedAt());
-        return dto;
-    }
-
-    private AdminPostDTO convertToAdminPostDTO(Post post) {
-        AdminPostDTO dto = new AdminPostDTO();
-        BeanUtils.copyProperties(post, dto);
-        return dto;
-    }
 }
