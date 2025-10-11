@@ -10,7 +10,7 @@
 
 // API基础配置
 const CONFIG = {
-	baseURL: 'http://localhost:8080/api',
+	baseURL: 'https://1sd14738sb896.vicp.fun:443/api',
 	timeout: 10000,
 	header: {
 		'Content-Type': 'application/json'

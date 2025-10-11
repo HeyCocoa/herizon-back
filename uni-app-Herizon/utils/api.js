@@ -442,7 +442,7 @@ export const fileApi = {
 			}
 
 			const uploadTask = uni.uploadFile({
-				url: 'http://localhost:8080/api/files/image',
+				url: 'https://1sd14738sb896.vicp.fun:443/api/files/image',
 				filePath: file,
 				name: 'file',
 				formData: { type },
@@ -483,7 +483,7 @@ export const fileApi = {
 	uploadVideo: (file) => {
 		return new Promise((resolve, reject) => {
 			uni.uploadFile({
-				url: 'http://localhost:8080/api/files/video',
+				url: 'https://1sd14738sb896.vicp.fun:443/api/files/video',
 				filePath: file,
 				name: 'file',
 				header: {

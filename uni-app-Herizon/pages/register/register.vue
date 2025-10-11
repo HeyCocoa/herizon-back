@@ -105,18 +105,23 @@
 
 					<!-- 用户协议 -->
 					<view class="agreement-section">
-						<label class="agreement-item">
-							<checkbox
-								:checked="agreedToTerms"
-								@change="onAgreementChange"
-							/>
-							<text class="agreement-text">
-								我已阅读并同意
-								<text class="link-text" @click="showTerms">《用户协议》</text>
-								和
-								<text class="link-text" @click="showPrivacy">《隐私政策》</text>
-							</text>
-						</label>
+						<checkbox-group
+							:value="agreedToTerms ? ['agree'] : []"
+							@change="onAgreementChange"
+						>
+							<label class="agreement-item">
+								<checkbox
+									value="agree"
+									:checked="agreedToTerms"
+								/>
+								<text class="agreement-text">
+									我已阅读并同意
+									<text class="link-text" @click="showTerms">《用户协议》</text>
+									和
+									<text class="link-text" @click="showPrivacy">《隐私政策》</text>
+								</text>
+							</label>
+						</checkbox-group>
 					</view>
 
 					<!-- 注册按钮 -->
@@ -392,7 +397,12 @@ export default {
 		 * 协议同意状态改变
 		 */
 		onAgreementChange(e) {
-			this.agreedToTerms = e.detail.value.length > 0
+			const detail = e && e.detail ? e.detail : {}
+			if (Array.isArray(detail.value)) {
+				this.agreedToTerms = detail.value.includes('agree')
+			} else {
+				this.agreedToTerms = !!detail.value
+			}
 		},
 
 		/**

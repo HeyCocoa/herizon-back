@@ -6,7 +6,7 @@
 			<view class="nav-item" @click="handleBack">
 				<text class="nav-text">返回</text>
 			</view>
-			<view class="nav-title">身份认证</view>
+			<view class="nav-title">女性身份认证</view>
 			<view class="nav-item" @click="handleSubmit">
 				<text class="nav-text submit-btn" :class="{ 'active': canSubmit }">提交</text>
 			</view>
@@ -17,8 +17,8 @@
 			<!-- 欢迎信息 -->
 			<view class="welcome-section">
 				<view class="welcome-icon">👩‍💼</view>
-				<text class="welcome-title">欢迎加入Herizon</text>
-				<text class="welcome-desc">为了确保社区的专业性和安全性,请完成身份认证,成为正式用户后可享受完整功能。</text>
+				<text class="welcome-title">欢迎加入Herizon女性社区</text>
+				<text class="welcome-desc">为了营造安全、互助的女性交流空间,请完成女性身份认证,通过后即可解锁社区全部权益。</text>
 			</view>
 
 			<!-- 问卷内容 -->
@@ -26,7 +26,7 @@
 				<!-- 基本信息 -->
 				<view class="question-group">
 					<view class="group-title">
-						<text class="title-text">基本信息</text>
+						<text class="title-text">身份与基本信息</text>
 						<text class="required-mark">*</text>
 					</view>
 
@@ -40,6 +40,26 @@
 							v-model="formData.realName"
 							:maxlength="20"
 						/>
+					</view>
+
+					<!-- 性别身份确认 -->
+					<view class="question-item">
+						<text class="question-label">请确认您的性别身份</text>
+						<view class="option-group column">
+							<view
+								class="option-item"
+								v-for="gender in genderOptions"
+								:key="gender.value"
+								:class="{
+									'selected': formData.genderIdentity === gender.value,
+									'warning': gender.value !== 'female'
+								}"
+								@click="selectGender(gender.value)"
+							>
+								<text class="option-text">{{ gender.label }}</text>
+							</view>
+						</view>
+						<text class="gender-hint">Herizon仅向确认以女性身份参与社区的成员开放正式权限。</text>
 					</view>
 
 					<!-- 年龄范围 -->
@@ -223,8 +243,8 @@
 					<text class="modal-title">提交确认</text>
 				</view>
 				<view class="modal-content">
-					<text class="modal-text">确定要提交身份认证信息吗?</text>
-					<text class="modal-hint">提交后需等待管理员审核,审核通过后即可升级为正式用户。</text>
+					<text class="modal-text">确定要提交女性身份认证信息吗?</text>
+					<text class="modal-hint">管理员审核通过后,您将获得Herizon女性社区的正式访问权限。</text>
 				</view>
 				<view class="modal-actions">
 					<button class="modal-btn cancel-btn" @click="hideSubmitModal">取消</button>
@@ -256,6 +276,7 @@
 				// 表单数据
 				formData: {
 					realName: '',        // 真实姓名
+					genderIdentity: '',  // 性别身份确认
 					ageRange: '',        // 年龄范围
 					city: '',            // 所在城市
 					industry: '',        // 所属行业
@@ -269,6 +290,11 @@
 				},
 
 				// 选项数据
+				genderOptions: [
+					{ value: 'female', label: '我确认自己认同并以女性身份参与社区' },
+					{ value: 'other', label: '我暂无法确认或不属于女性,了解社区适用范围' }
+				],
+
 				ageOptions: [
 					{ value: '18-25', label: '18-25岁' },
 					{ value: '26-30', label: '26-30岁' },
@@ -354,6 +380,7 @@
 			 */
 			canSubmit() {
 				return this.formData.realName.trim() &&
+					   this.formData.genderIdentity === 'female' &&
 					   this.formData.ageRange &&
 					   this.formData.city.trim() &&
 					   this.formData.industry &&
@@ -399,6 +426,19 @@
 						success: () => {
 							uni.navigateBack()
 						}
+					})
+				}
+			},
+
+			/**
+			 * 选择性别身份
+			 */
+			selectGender(value) {
+				this.formData.genderIdentity = value
+				if (value !== 'female') {
+					uni.showToast({
+						title: 'Herizon仅向女性用户开放正式功能',
+						icon: 'none'
 					})
 				}
 			},
@@ -515,6 +555,7 @@
 			 */
 			hasUnsavedData() {
 				return this.formData.realName.trim() ||
+					   this.formData.genderIdentity ||
 					   this.formData.city.trim() ||
 					   this.formData.selfIntroduction.trim() ||
 					   this.formData.ageRange ||
@@ -540,6 +581,10 @@
 			showValidationErrors() {
 				if (!this.formData.realName.trim()) {
 					uni.showToast({ title: '请输入真实姓名', icon: 'none' })
+					return
+				}
+				if (this.formData.genderIdentity !== 'female') {
+					uni.showToast({ title: '请确认您的女性身份', icon: 'none' })
 					return
 				}
 				if (!this.formData.ageRange) {
@@ -611,7 +656,7 @@
 					setTimeout(() => {
 						uni.showModal({
 							title: '提交成功',
-							content: '您的身份认证申请已提交,管理员审核通过后即可升级为正式用户,享受完整功能。审核结果会通过系统通知您。',
+							content: '您的女性身份认证申请已提交,管理员审核通过后即可升级为正式用户,享受女性社区完整功能。审核结果会通过系统通知您。',
 							showCancel: false,
 							success: () => {
 								uni.switchTab({
@@ -640,11 +685,11 @@
 	/* 主容器样式 */
 	.verification-container {
 		width: 100%;
-		height: 100vh;
+		min-height: 100vh;
 		background-color: #f5f5f5;
 		display: flex;
 		flex-direction: column;
-		overflow: hidden; /* 防止内容溢出导致横向滚动 */
+		overflow-x: hidden; /* 仅限制横向滚动,保留纵向滚动能力 */
 	}
 
 	/* 顶部导航栏 */
@@ -693,6 +738,9 @@
 		flex: 1;
 		margin-top: 88rpx;
 		padding: 30rpx;
+		box-sizing: border-box;
+		min-height: 0; /* 允许在flex容器中正确收缩以启用内部滚动 */
+		overflow-x: hidden;
 	}
 
 	/* 欢迎信息 */
@@ -824,6 +872,10 @@
 		gap: 20rpx;
 	}
 
+	.questionnaire-section .option-group.column {
+		flex-direction: column;
+	}
+
 	.questionnaire-section .option-item {
 		padding: 20rpx 30rpx;
 		background-color: #f8f8f8;
@@ -837,6 +889,11 @@
 		border-color: #f33e54;
 	}
 
+	.questionnaire-section .option-item.warning {
+		background-color: #fff8f0;
+		border-color: #f6b26b;
+	}
+
 	.questionnaire-section .option-text {
 		font-size: 28rpx;
 		color: #666;
@@ -845,6 +902,10 @@
 	.questionnaire-section .option-item.selected .option-text {
 		color: #f33e54;
 		font-weight: 500;
+	}
+
+	.questionnaire-section .option-item.warning .option-text {
+		color: #c96a1b;
 	}
 
 	.questionnaire-section .checkbox-group {
@@ -897,6 +958,14 @@
 	.questionnaire-section .checkbox-item.selected .checkbox-text {
 		color: #333;
 		font-weight: 500;
+	}
+
+	.gender-hint {
+		font-size: 24rpx;
+		color: #999;
+		display: block;
+		margin-top: 12rpx;
+		line-height: 1.6;
 	}
 
 	/* 协议部分 */
