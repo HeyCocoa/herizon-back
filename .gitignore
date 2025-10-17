@@ -1,10 +1,6 @@
-CLAUDE.md
+
 AGENTS.md
-TODO.md
-src/main/resources/application.yaml
-src/main/resources/sql
 
 docs
 target
-uni-app-Herizon/node_modules
-uni-app-Herizon/unpackage
+uni-app-Herizon

@@ -57,10 +57,13 @@ public class CorsConfig {
         // 创建CORS配置源
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
-        // 对所有API路径应用CORS配置
-        source.registerCorsConfiguration("/api/**", config);
+        // server.servlet.context-path=/api 已经作为统一前缀
+        // 这里使用 /** 确保剥离上下文路径后仍能匹配到所有控制器
+        source.registerCorsConfiguration("/**", config);
 
         // 返回配置好的CORS过滤器
         return new CorsFilter(source);
     }
 }
+
+
