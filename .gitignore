@@ -3,4 +3,7 @@ AGENTS.md
 
 docs
 target
-uni-app-Herizon
+nul
+uni-app-Herizon/*
+!uni-app-Herizon/static/
+!uni-app-Herizon/static/**
