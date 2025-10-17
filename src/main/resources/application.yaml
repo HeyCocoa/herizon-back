@@ -3,9 +3,25 @@ spring:
     name: Herizon
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/herizon?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true&useSSL=false&readOnlyPropagatesToServer=false
+    url: jdbc:mysql://sh-cynosdbmysql-grp-524ybu4e.sql.tencentcdb.com:20852/herizon?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true&useSSL=false&readOnlyPropagatesToServer=false
     username: root
-    password: 20050113
+    password: Herizon123456
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-test-query: SELECT 1
+      # 修复tx_read_only系统变量兼容性问题
+      read-only: false
+      # 禁用连接池的只读检查，避免在旧版MySQL上出现兼容性问题
+      data-source-properties:
+        useInformationSchema: true
+        nullCatalogMeansCurrent: true
+        # 兼容旧版MySQL，禁用某些功能检查
+        useServerPrepStmts: false
+        cachePrepStmts: false
+      # 关键配置：禁用isReadOnly检查，解决tx_read_only错误
+      connection-init-sql: SELECT 1
+      is-read-only: false
 
 mybatis-flex:
   global-config:
