@@ -23,6 +23,9 @@ spring:
       connection-init-sql: SELECT 1
       is-read-only: false
 
+app:
+  public-base-url: ${PUBLIC_BASE_URL:https://herizon-188137-4-1379688731.sh.run.tcloudbase.com/api}
+
 mybatis-flex:
   global-config:
     db-type: mysql
@@ -73,6 +76,5 @@ wechat:
     app-secret: 1a3bbd5a751a8511dd6e77b481b607a3
     # 微信API地址
     code2session-url: https://api.weixin.qq.com/sns/jscode2session
-
 
 
