@@ -71,6 +71,11 @@ public class User{
     private String avatar;
 
     /**
+     * 用户身份标识，用于前端展示定制的身份标签
+     */
+    private String identity;
+
+    /**
      * 用户注册来源: 1=普通注册, 2=微信小程序, 3=微信App, 4=其他第三方
      */
     private Integer registerSource;

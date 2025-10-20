@@ -1,5 +1,7 @@
 package org.example.herizon.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mybatisflex.core.query.QueryWrapper;
 import org.example.herizon.dto.*;
 import org.example.herizon.entity.User;
@@ -13,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -48,6 +52,8 @@ public class UserService {
      * 密码加密器，使用BCrypt算法
      */
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 用户注册
@@ -161,6 +167,7 @@ public class UserService {
         return convertToProfileDTO(user, true);
     }
 
+    
     /**
      * 更新用户资料
      * <p>
@@ -207,6 +214,26 @@ public class UserService {
         return convertToProfileDTO(user, true);
     }
 
+    private int calculateQuizScore(List<VerificationSubmissionRequest.QuizAnswer> answers) {
+        if (answers == null || answers.isEmpty()) {
+            return 0;
+        }
+
+        int total = 0;
+        for (VerificationSubmissionRequest.QuizAnswer answer : answers) {
+            if (answer == null || answer.getSelectedOption() == null) {
+                continue;
+            }
+            switch (answer.getSelectedOption().trim().toUpperCase(Locale.ROOT)) {
+                case "A" -> total += 3;
+                case "B" -> total += 2;
+                case "C" -> total += 1;
+                default -> total += answer.getScore() != null ? Math.max(answer.getScore(), 0) : 0;
+            }
+        }
+        return total;
+    }
+
     /**
      * 申请身份认证
      * <p>
@@ -217,22 +244,52 @@ public class UserService {
      * @param questionnaireData 身份认证问卷数据
      */
     @Transactional
-    public void applyVerification(Long currentUserId, String questionnaireData) {
+    public UserProfileDTO applyVerification(Long currentUserId, VerificationSubmissionRequest request) {
+        if (request == null) {
+            throw new RuntimeException("提交数据不能为空");
+        }
+
         User user = userMapper.selectOneById(currentUserId);
         if (user == null) {
             throw new RuntimeException("用户不存在");
         }
 
-        if (user.getRole() != 0) {
-            throw new RuntimeException("只有体验用户可以申请身份认证");
+        if (user.getRole() != null && user.getRole() != 0) {
+            throw new RuntimeException("只有体验用户可以提交认证");
         }
 
-        // 更新问卷数据，等待管理员审核
-        user.setQuestionnaireData(questionnaireData);
+        int totalScore = calculateQuizScore(request.getQuizAnswers());
+        request.setTotalScore(totalScore);
+        boolean autoApproved = totalScore >= 16;
+
+        VerificationSubmissionRequest.PersonalInfo personalInfo = request.getPersonalInfo();
+        if (personalInfo != null) {
+            String identityLabel = personalInfo.getIdentityLabel();
+            if (identityLabel != null && !identityLabel.trim().isEmpty()) {
+                user.setIdentity(identityLabel.trim());
+            }
+        }
+
+        try {
+            request.setPersonalInfo(personalInfo);
+            request.setTotalScore(totalScore);
+            request.setAutoApproved(autoApproved);
+            user.setQuestionnaireData(objectMapper.writeValueAsString(request));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("问卷数据处理失败", e);
+        }
+
+        if (autoApproved) {
+            user.setRole(1);
+        }
+
         user.setUpdatedAt(LocalDateTime.now());
         userMapper.update(user);
+
+        return convertToProfileDTO(user, true);
     }
 
+    
     /**
      * 检查用户名是否可用
      *
@@ -841,6 +898,7 @@ public class UserService {
         userInfo.setId(user.getId()); // 前端兼容性：设置id字段
         userInfo.setUsername(user.getUsername());
         userInfo.setNickname(user.getNickname());
+        userInfo.setIdentity(user.getIdentity());
         userInfo.setEmail(user.getEmail()); // 设置邮箱（可能为空）
         userInfo.setAvatar(user.getAvatar());
         userInfo.setRole(user.getRole());

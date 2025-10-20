@@ -32,6 +32,11 @@ public class UserProfileDTO {
     private String nickname;
 
     /**
+     * 用户身份身份标签
+     */
+    private String identity;
+
+    /**
      * 用户头像URL
      */
     private String avatar;

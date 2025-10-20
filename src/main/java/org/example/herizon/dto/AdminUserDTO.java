@@ -15,6 +15,7 @@ public class AdminUserDTO {
     private String email;
     private Integer role;
     private String roleDescription;
+    private String identity;
     private String questionnaireData;
     private LocalDateTime createdAt;
     private Integer postCount;

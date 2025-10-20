@@ -9,6 +9,7 @@ import org.example.herizon.dto.UserLoginRequest;
 import org.example.herizon.dto.UserProfileDTO;
 import org.example.herizon.dto.UserStatsDTO;
 import org.example.herizon.dto.UpdateProfileRequest;
+import org.example.herizon.dto.VerificationSubmissionRequest;
 import org.example.herizon.entity.User;
 import org.example.herizon.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -131,11 +132,11 @@ public class UserController {
      */
     @Operation(summary = "申请身份认证", description = "体验用户申请升级为正式用户")
     @PostMapping("/verify")
-    public Result<Void> applyVerification(
+    public Result<UserProfileDTO> applyVerification(
             @Parameter(description = "当前用户ID") @RequestHeader("userId") Long currentUserId,
-            @Parameter(description = "身份认证问卷数据") @RequestBody String questionnaireData) {
-        userService.applyVerification(currentUserId, questionnaireData);
-        return Result.success();
+            @Parameter(description = "身份认证提交数据") @RequestBody VerificationSubmissionRequest request) {
+        UserProfileDTO profile = userService.applyVerification(currentUserId, request);
+        return Result.success(profile);
     }
 
     /**

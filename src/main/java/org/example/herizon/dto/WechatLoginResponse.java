@@ -78,6 +78,11 @@ public class WechatLoginResponse {
         private String nickname;
 
         /**
+         * 用户身份标签
+         */
+        private String identity;
+
+        /**
          * 用户邮箱（可能为空）
          */
         private String email;
