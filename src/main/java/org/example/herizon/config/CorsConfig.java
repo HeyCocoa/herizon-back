@@ -33,7 +33,7 @@ public class CorsConfig {
         // 创建CORS配置对象
         CorsConfiguration config = new CorsConfiguration();
 
-        // 允许所有来源访问（开发环境配置）codex
+        // 允许所有来源访问（开发环境配置）
         // 生产环境应改为: config.addAllowedOrigin("https://yourdomain.com");
         config.addAllowedOriginPattern("*");
 

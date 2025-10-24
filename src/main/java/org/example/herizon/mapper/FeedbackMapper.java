@@ -7,7 +7,7 @@ import org.example.herizon.entity.Feedback;
 /**
  * 反馈数据访问接口
  *
- * @author Claude Code
+ * @author Kokoa
  */
 @Mapper
 public interface FeedbackMapper extends BaseMapper<Feedback> {

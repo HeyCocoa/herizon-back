@@ -20,7 +20,7 @@ import javax.sql.DataSource;
  * - 禁用HikariCP的只读检查
  * - 配置兼容的连接属性
  *
- * @author Claude Code
+ * @author Kokoa
  */
 @Configuration
 public class DataSourceConfig {

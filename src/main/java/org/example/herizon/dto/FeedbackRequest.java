@@ -7,7 +7,7 @@ import lombok.Data;
  * <p>
  * 用于接收用户提交的反馈信息
  *
- * @author Claude Code
+ * @author Kokoa
  */
 @Data
 public class FeedbackRequest {

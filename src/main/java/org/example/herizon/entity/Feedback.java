@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * 用户意见反馈和问题报告
  * 支持匿名反馈和分类管理
  *
- * @author Claude Code
+ * @author Kokoa
  */
 @Data
 @Table("feedback")
